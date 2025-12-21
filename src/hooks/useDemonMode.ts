@@ -83,6 +83,7 @@ export function useDemonMode(config: DemonModeConfig = {}) {
   const driftTimerRef = useRef<NodeJS.Timeout | null>(null);
   const moodRef = useRef<Mood>(mood);
   const onTopicRef = useRef(isOnTopic);
+  const wasHiddenRef = useRef(false);
 
   useEffect(() => {
     moodRef.current = mood;
@@ -212,10 +213,20 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) return;
 
     if (document.hidden) {
+      wasHiddenRef.current = true;
       clearTimers();
+      if (onTopicRef.current) {
+        return;
+      }
       setMood("demon");
       addDistraction();
       document.title = "I SEE YOU";
+      return;
+    }
+
+    if (wasHiddenRef.current) {
+      wasHiddenRef.current = false;
+      handleActivity();
     }
   }, [
     isSessionActive,
@@ -224,6 +235,7 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     setMood,
     addDistraction,
     clearTimers,
+    handleActivity,
   ]);
 
   useEffect(() => {

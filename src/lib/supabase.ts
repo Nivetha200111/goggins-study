@@ -86,6 +86,20 @@ export async function getUser(userId: string): Promise<UserProfile | null> {
   return data;
 }
 
+export async function getUserByUsername(username: string): Promise<UserProfile | null> {
+  const trimmed = username.trim();
+  if (!trimmed) return null;
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("username", trimmed)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return data || null;
+}
+
 export async function updateUser(userId: string, updates: Partial<UserProfile>): Promise<void> {
   await supabase.from("users").update(updates).eq("id", userId);
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { validateInviteCode, createUser } from "@/lib/supabase";
+import { validateInviteCode, createUser, getUserByUsername } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,6 +32,25 @@ export default function LoginPage() {
     }
 
     try {
+      const existingUser = await getUserByUsername(trimmedUsername);
+      if (existingUser) {
+        localStorage.setItem(
+          "focus-companion-user",
+          JSON.stringify({
+            id: existingUser.id,
+            username: existingUser.username,
+          })
+        );
+        router.push("/");
+        return;
+      }
+
+      if (!trimmedCode) {
+        setError("Invite code is required for new users.");
+        setLoading(false);
+        return;
+      }
+
       const isValid = await validateInviteCode(trimmedCode);
       if (!isValid) {
         setError("Invalid or expired invite code");
@@ -88,8 +107,7 @@ export default function LoginPage() {
               type="text"
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
-              placeholder="Enter invite code"
-              required
+              placeholder="Invite code (first time only)"
             />
           </label>
 
