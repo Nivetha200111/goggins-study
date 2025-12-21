@@ -11,26 +11,24 @@ export interface StudyTab {
 }
 
 export interface GameState {
-  // Companion state
   mood: Mood;
   isSessionActive: boolean;
-
-  // Study tabs
   tabs: StudyTab[];
   activeTabId: string | null;
-
-  // Stats
   totalXp: number;
   level: number;
   streak: number;
   lastActiveDate: string | null;
-
-  // Session tracking
   sessionStart: number | null;
   lastActivityTime: number;
+  isDemonModeEnabled: boolean;
+  isMonitoringEnabled: boolean;
+  isSoundEnabled: boolean;
 
-  // Actions
   setMood: (mood: Mood) => void;
+  toggleDemonMode: () => void;
+  toggleMonitoring: () => void;
+  toggleSound: () => void;
   startSession: () => void;
   endSession: () => void;
   addTab: (name: string, color: string) => void;
@@ -47,4 +45,10 @@ export interface DemonModeState {
   mood: Mood;
   timeInCurrentMood: number;
   isLocked: boolean;
+}
+
+export interface Whitelist {
+  domains: string[];
+  apps: string[];
+  keywords: string[];
 }

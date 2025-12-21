@@ -1,0 +1,465 @@
+/* ========================================
+   THE IGNORANT APPRENTICE - COMPANION CSS
+   ======================================== */
+
+.companion-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ========================================
+   COMPANION BODY
+   ======================================== */
+
+.companion-body {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  box-shadow:
+    0 8px 32px rgba(102, 126, 234, 0.4),
+    inset 0 -4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Antenna */
+.companion-antenna {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 20px;
+  background: #667eea;
+  border-radius: 2px;
+}
+
+.antenna-ball {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: #ff6b4a;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #ff6b4a;
+  animation: antennaPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes antennaPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 1; }
+  50% { transform: translateX(-50%) scale(1.2); opacity: 0.8; }
+}
+
+/* Face */
+.companion-face {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 40px;
+}
+
+/* Eyes */
+.companion-eyes {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.eye {
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.pupil {
+  width: 8px;
+  height: 8px;
+  background: #1a1d2f;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+/* Mouth */
+.companion-mouth {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 10px;
+  border-radius: 0 0 20px 20px;
+  background: #1a1d2f;
+  transition: all 0.3s ease;
+}
+
+/* Dialogue Bubble */
+.companion-dialogue {
+  background: white;
+  padding: 8px 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  max-width: 180px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a1d2f;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.companion-dialogue::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom-color: white;
+  border-top: 0;
+}
+
+/* ========================================
+   HAPPY STATE
+   ======================================== */
+
+.companion-container.happy {
+  animation: float 3s ease-in-out infinite;
+}
+
+.companion-container.happy .companion-body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.companion-container.happy .companion-mouth {
+  height: 12px;
+  border-radius: 0 0 20px 20px;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ========================================
+   SUSPICIOUS STATE
+   ======================================== */
+
+.companion-container.suspicious {
+  animation: suspiciousSway 2s ease-in-out infinite;
+}
+
+.companion-container.suspicious .companion-body {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  filter: grayscale(0.3);
+}
+
+.companion-container.suspicious .eye {
+  height: 8px;
+  border-radius: 8px;
+}
+
+.companion-container.suspicious .pupil {
+  height: 4px;
+  border-radius: 4px;
+}
+
+.companion-container.suspicious .companion-mouth {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.companion-container.suspicious .companion-dialogue {
+  background: #f3f4f6;
+}
+
+@keyframes suspiciousSway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* ========================================
+   ANGRY STATE
+   ======================================== */
+
+.companion-container.angry {
+  animation: angryShake 0.3s ease-in-out infinite;
+}
+
+.companion-container.angry .companion-body {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow:
+    0 8px 32px rgba(239, 68, 68, 0.6),
+    0 0 60px rgba(239, 68, 68, 0.4),
+    inset 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.companion-container.angry .antenna-ball {
+  background: #fff;
+  animation: angryPulse 0.2s ease-in-out infinite;
+}
+
+.companion-container.angry .eye {
+  background: #fff;
+  transform: scaleY(0.6) rotate(-10deg);
+}
+
+.companion-container.angry .eye.right {
+  transform: scaleY(0.6) rotate(10deg);
+}
+
+.companion-container.angry .pupil {
+  background: #dc2626;
+  width: 10px;
+  height: 10px;
+}
+
+.companion-container.angry .companion-mouth {
+  width: 24px;
+  height: 6px;
+  border-radius: 0;
+  transform: translateX(-50%) scaleY(1.5);
+}
+
+.companion-container.angry .companion-dialogue {
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.anger-particles {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.anger-particles .particle {
+  font-size: 16px;
+  font-weight: 900;
+  color: #dc2626;
+  animation: particleFloat 0.5s ease-in-out infinite;
+}
+
+.anger-particles .particle:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.anger-particles .particle:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes angryShake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-3px) rotate(-2deg); }
+  75% { transform: translateX(3px) rotate(2deg); }
+}
+
+@keyframes angryPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.5); }
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-8px); opacity: 0.5; }
+}
+
+/* ========================================
+   DEMON STATE
+   ======================================== */
+
+.companion-container.demon {
+  animation: demonFloat 1s ease-in-out infinite;
+  transform: scale(1.5);
+  bottom: 50%;
+  right: 50%;
+  margin-right: -60px;
+  margin-bottom: -60px;
+}
+
+.companion-container.demon .companion-body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+  width: 120px;
+  height: 120px;
+  box-shadow:
+    0 0 80px rgba(239, 68, 68, 0.8),
+    0 0 120px rgba(239, 68, 68, 0.4),
+    inset 0 0 40px rgba(239, 68, 68, 0.3);
+}
+
+.companion-container.demon .companion-antenna {
+  display: none;
+}
+
+.companion-container.demon .companion-eyes {
+  justify-content: center;
+  padding: 0;
+}
+
+.companion-container.demon .eye.left {
+  display: none;
+}
+
+.companion-container.demon .eye.right {
+  width: 50px;
+  height: 50px;
+  background: #dc2626;
+  box-shadow:
+    0 0 30px #dc2626,
+    inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.companion-container.demon .pupil {
+  width: 20px;
+  height: 40px;
+  background: #000;
+  border-radius: 50%;
+  animation: demonPupil 2s ease-in-out infinite;
+}
+
+.companion-container.demon .companion-mouth {
+  display: none;
+}
+
+.companion-container.demon .companion-dialogue {
+  background: #1a1a2e;
+  color: #dc2626;
+  font-weight: 900;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: glitchText 0.5s ease-in-out infinite;
+}
+
+.companion-container.demon .companion-dialogue::after {
+  border-bottom-color: #1a1a2e;
+}
+
+/* Demon Tentacles */
+.demon-tentacles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.tentacle {
+  position: absolute;
+  width: 8px;
+  height: 40px;
+  background: linear-gradient(to bottom, #dc2626, transparent);
+  border-radius: 4px;
+  animation: tentacleWave 1s ease-in-out infinite;
+}
+
+.tentacle.t1 {
+  top: 100%;
+  left: 20%;
+  transform-origin: top center;
+  animation-delay: 0s;
+}
+
+.tentacle.t2 {
+  top: 100%;
+  left: 40%;
+  transform-origin: top center;
+  animation-delay: 0.2s;
+}
+
+.tentacle.t3 {
+  top: 100%;
+  left: 60%;
+  transform-origin: top center;
+  animation-delay: 0.4s;
+}
+
+.tentacle.t4 {
+  top: 100%;
+  left: 80%;
+  transform-origin: top center;
+  animation-delay: 0.6s;
+}
+
+@keyframes demonFloat {
+  0%, 100% { transform: scale(1.5) translateY(0); }
+  50% { transform: scale(1.5) translateY(-20px); }
+}
+
+@keyframes demonPupil {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes tentacleWave {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
+}
+
+@keyframes glitchText {
+  0%, 100% {
+    transform: translateX(0);
+    text-shadow: none;
+  }
+  20% {
+    transform: translateX(-2px);
+    text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
+  }
+  40% {
+    transform: translateX(2px);
+    text-shadow: -2px 0 #00ffff, 2px 0 #ff00ff;
+  }
+  60% {
+    transform: translateX(-1px);
+    text-shadow: 1px 0 #00ffff, -1px 0 #ff00ff;
+  }
+  80% {
+    transform: translateX(1px);
+    text-shadow: -1px 0 #00ffff, 1px 0 #ff00ff;
+  }
+}
+
+/* ========================================
+   PIP TOGGLE BUTTON
+   ======================================== */
+
+.pip-toggle {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(26, 29, 47, 0.8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pip-toggle:hover {
+  background: #1a1d2f;
+  transform: scale(1.05);
+}

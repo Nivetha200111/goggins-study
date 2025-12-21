@@ -1,0 +1,358 @@
+/* ========================================
+   DEMON OVERLAY - THE PUNISHMENT SCREEN
+   ======================================== */
+
+.demon-overlay {
+  position: fixed;
+  top: 30px; 
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  background: #0a0a0f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  overflow: hidden;
+}
+
+/* Glitch Background Lines */
+.glitch-lines {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.glitch-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.3), transparent);
+  animation: glitchLine 3s linear infinite;
+  opacity: 0;
+}
+
+.glitch-line:nth-child(odd) {
+  animation-direction: reverse;
+}
+
+@keyframes glitchLine {
+  0% { transform: translateY(-100vh); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* ========================================
+   THE DEMON EYE
+   ======================================== */
+
+.demon-eye-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  animation: eyeFloat 3s ease-in-out infinite;
+}
+
+.demon-eye {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, #fff 0%, #f8d7da 50%, #dc2626 100%);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 60px rgba(220, 38, 38, 0.8),
+    0 0 120px rgba(220, 38, 38, 0.4),
+    inset 0 0 30px rgba(220, 38, 38, 0.3);
+  animation: eyePulse 2s ease-in-out infinite;
+}
+
+.demon-iris {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #dc2626 0%, #7f1d1d 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.demon-pupil {
+  width: 30px;
+  height: 60px;
+  background: #000;
+  border-radius: 50%;
+  animation: pupilLook 4s ease-in-out infinite;
+}
+
+/* Eye Veins */
+.eye-veins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vein {
+  position: absolute;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #dc2626, transparent);
+  border-radius: 2px;
+}
+
+.vein.v1 { top: 30%; left: -10px; transform: rotate(-20deg); }
+.vein.v2 { top: 60%; left: -10px; transform: rotate(20deg); }
+.vein.v3 { top: 30%; right: -10px; transform: rotate(20deg) scaleX(-1); }
+.vein.v4 { top: 60%; right: -10px; transform: rotate(-20deg) scaleX(-1); }
+
+@keyframes eyeFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(-2deg); }
+  75% { transform: translateY(10px) rotate(2deg); }
+}
+
+@keyframes eyePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes pupilLook {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+/* ========================================
+   MESSAGE
+   ======================================== */
+
+.demon-message {
+  text-align: center;
+  z-index: 1;
+}
+
+.demon-message h1 {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #dc2626;
+  text-transform: uppercase;
+  letter-spacing: 8px;
+  margin: 0;
+  position: relative;
+}
+
+.glitch-text {
+  animation: textGlitch 0.5s ease-in-out infinite;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  color: #00ffff;
+  animation: glitchBefore 0.5s ease-in-out infinite;
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+}
+
+.glitch-text::after {
+  color: #ff00ff;
+  animation: glitchAfter 0.5s ease-in-out infinite;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+
+@keyframes textGlitch {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+@keyframes glitchBefore {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(3px); }
+  40% { transform: translateX(-3px); }
+  60% { transform: translateX(2px); }
+  80% { transform: translateX(-2px); }
+}
+
+@keyframes glitchAfter {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+.demon-subtext {
+  font-size: 1.2rem;
+  color: #6b7280;
+  margin-top: 16px;
+}
+
+.demon-subtext .highlight {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* ========================================
+   APOLOGY FORM
+   ======================================== */
+
+.apology-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  z-index: 1;
+}
+
+.apology-form.shake {
+  animation: formShake 0.5s ease-in-out;
+}
+
+@keyframes formShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-20px); }
+  40% { transform: translateX(20px); }
+  60% { transform: translateX(-10px); }
+  80% { transform: translateX(10px); }
+}
+
+.apology-input {
+  width: 300px;
+  padding: 16px 24px;
+  font-size: 1.2rem;
+  font-family: inherit;
+  background: transparent;
+  border: 2px solid #dc2626;
+  border-radius: 8px;
+  color: #fff;
+  text-align: center;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.apology-input::placeholder {
+  color: #6b7280;
+}
+
+.apology-input:focus {
+  border-color: #fff;
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+}
+
+.apology-submit {
+  padding: 12px 32px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.apology-submit:hover {
+  background: #fff;
+  color: #dc2626;
+  transform: scale(1.05);
+}
+
+.attempt-warning {
+  color: #fbbf24;
+  font-size: 0.9rem;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================================
+   CORNER MESSAGES
+   ======================================== */
+
+.corner-message {
+  position: absolute;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(220, 38, 38, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  animation: cornerFade 3s ease-in-out infinite;
+}
+
+.corner-message.top-left {
+  top: 24px;
+  left: 24px;
+}
+
+.corner-message.top-right {
+  top: 24px;
+  right: 24px;
+}
+
+.corner-message.bottom-left {
+  bottom: 24px;
+  left: 24px;
+}
+
+.corner-message.bottom-right {
+  bottom: 24px;
+  right: 24px;
+}
+
+@keyframes cornerFade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* ========================================
+   BODY CLASS FOR GLOBAL EFFECTS
+   ======================================== */
+
+body.demon-active {
+  overflow: hidden;
+}
+
+body.demon-active::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 99998;
+  animation: scanlines 0.1s linear infinite;
+}
+
+@keyframes scanlines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}

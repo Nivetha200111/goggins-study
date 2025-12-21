@@ -1,380 +1,588 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const PROFILE_KEY = "study-sentry-profile-v1";
-const alertCooldownMs = 6000;
-// Minimum ratio of on-topic words (excluding stop words) - higher sensitivity = higher required ratio
-const ratioThresholds = [0.1, 0.15, 0.2, 0.25, 0.3];
-// Common words to ignore in drift detection
-const stopWords = new Set([
-  "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her",
-  "was", "one", "our", "out", "has", "have", "been", "were", "they", "this",
-  "that", "with", "from", "your", "what", "when", "will", "how", "which", "their",
-  "about", "into", "more", "some", "than", "them", "then", "these", "would", "each",
-  "make", "like", "just", "over", "such", "also", "most", "other", "very", "after",
-  "where", "only", "come", "its", "before", "between", "because", "being", "through",
-]);
-
-type FocusProfile = {
-  sessions: number;
-  distractions: number;
-  focusMinutes: number;
-};
-
-const emptyProfile: FocusProfile = {
-  sessions: 0,
-  distractions: 0,
-  focusMinutes: 0,
-};
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useGameStore } from "@/store/gameStore";
+import { Companion } from "@/components/Companion/Companion";
+import { DemonOverlay } from "@/components/Companion/DemonOverlay";
+import { TabSelector } from "@/components/StudyTabs/TabSelector";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function Home() {
-  const [topic, setTopic] = useState("");
-  const [notes, setNotes] = useState("");
-  const [sensitivity, setSensitivity] = useState(3);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [screamOpen, setScreamOpen] = useState(false);
-  const [lastReason, setLastReason] = useState("Stay locked in.");
-  const [profile, setProfile] = useState<FocusProfile>(emptyProfile);
-  const [sessionStart, setSessionStart] = useState<number | null>(null);
-  const lastAlertRef = useRef(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioEnabledRef = useRef(false);
+  const router = useRouter();
+  const {
+    tabs,
+    activeTabId,
+    isSessionActive,
+    startSession,
+    endSession,
+    totalXp,
+    level,
+    streak,
+    mood,
+  } = useGameStore();
 
-  const topicKeywords = useMemo(() => {
-    return topic
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 2);
-  }, [topic]);
+  const activeTab = tabs.find((t: { id: string }) => t.id === activeTabId);
+  const canStartSession = activeTabId !== null;
 
-  useEffect(() => {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as FocusProfile;
-      setProfile(parsed);
-    } catch {
-      setProfile(emptyProfile);
+  const handleSignOut = async () => {
+    if (isSessionActive) {
+      endSession();
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  }, [profile]);
-
-  useEffect(() => {
-    if (sessionActive && sessionStart === null) {
-      setSessionStart(Date.now());
-    }
-    if (!sessionActive && sessionStart !== null) {
-      const delta = (Date.now() - sessionStart) / 60000;
-      setProfile((prev) => ({
-        ...prev,
-        focusMinutes: Number((prev.focusMinutes + delta).toFixed(1)),
-      }));
-      setSessionStart(null);
-    }
-  }, [sessionActive, sessionStart]);
-
-  const recordFocusSlice = useCallback(() => {
-    if (sessionStart === null) return;
-    const delta = (Date.now() - sessionStart) / 60000;
-    setProfile((prev) => ({
-      ...prev,
-      focusMinutes: Number((prev.focusMinutes + delta).toFixed(1)),
-    }));
-    setSessionStart(Date.now());
-  }, [sessionStart]);
-
-  const raiseAlert = useCallback((reason: string, options?: { force?: boolean }) => {
-    // Allow forced alerts (for Test Scream) even without active session
-    if (!sessionActive && !options?.force) return;
-    const now = Date.now();
-    if (now - lastAlertRef.current < alertCooldownMs && !options?.force) return;
-    lastAlertRef.current = now;
-    if (sessionActive) {
-      recordFocusSlice();
-      setProfile((prev) => ({
-        ...prev,
-        distractions: prev.distractions + 1,
-      }));
-    }
-    setLastReason(reason);
-    setScreamOpen(true);
-  }, [sessionActive, recordFocusSlice]);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) {
-        raiseAlert("You left the focus tab.");
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [sessionActive, raiseAlert]);
-
-  useEffect(() => {
-    if (!sessionActive) return;
-    if (topicKeywords.length === 0) return;
-    const tokens = notes
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .filter((word) => word.length > 2);
-    if (tokens.length < 10) return;
-    // Filter out common stop words before checking topic relevance
-    const contentWords = tokens.filter((word) => !stopWords.has(word));
-    if (contentWords.length < 5) return;
-    // Calculate ratio of on-topic words
-    const onTopicWords = contentWords.filter((word) => topicKeywords.includes(word));
-    const ratio = onTopicWords.length / contentWords.length;
-    const requiredRatio = ratioThresholds[Math.min(4, Math.max(0, sensitivity - 1))];
-    if (ratio < requiredRatio) {
-      raiseAlert("Topic drift detected in your notes.");
-    }
-  }, [notes, sensitivity, sessionActive, topicKeywords, raiseAlert]);
-
-  useEffect(() => {
-    if (!screamOpen || !videoRef.current) return;
-    videoRef.current.currentTime = 0;
-    // Unmute only if user has interacted (audio enabled)
-    videoRef.current.muted = !audioEnabledRef.current;
-    videoRef.current.play().catch(() => {
-      // Browser blocked autoplay - play muted as fallback
-      if (videoRef.current) {
-        videoRef.current.muted = true;
-        videoRef.current.play().catch(() => {});
-      }
-    });
-  }, [screamOpen]);
-
-  const toggleSession = () => {
-    // Enable audio on first user interaction
-    audioEnabledRef.current = true;
-    if (!sessionActive) {
-      setProfile((prev) => ({ ...prev, sessions: prev.sessions + 1 }));
-    }
-    setSessionActive((prev) => !prev);
-  };
-
-  const resetProfile = () => {
-    setProfile(emptyProfile);
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/login");
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden px-6 py-10 sm:px-10">
-      <div
-        className="pointer-events-none absolute left-6 top-12 h-52 w-52 rounded-full bg-[#ffcf9a]/70 blur-2xl"
-        style={{ animation: "floaty 10s ease-in-out infinite" }}
-      />
-      <div
-        className="pointer-events-none absolute right-10 top-24 h-72 w-72 rounded-full bg-[#ff6b4a]/30 blur-3xl"
-        style={{ animation: "floaty 12s ease-in-out infinite" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-12 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#ffd2e6]/40 blur-3xl"
-        style={{ animation: "floaty 14s ease-in-out infinite" }}
-      />
+    <div className="app-container">
+      {/* Background decorations */}
+      <div className="bg-orb orb-1" />
+      <div className="bg-orb orb-2" />
+      <div className="bg-orb orb-3" />
 
-      <main className="relative mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-[color:var(--muted)]">
-              Focus Sentinel
-            </p>
-            <h1 className="text-4xl font-semibold text-[color:var(--ink)] sm:text-5xl">
-              Study Sentry
-            </h1>
-            <p className="mt-2 max-w-xl text-base text-[color:var(--muted)]">
-              Lock in on a topic. Drift away, and the sentry screams back with a
-              full-screen interruption.
+      {/* Main Content */}
+      <main className="main-content">
+        {/* Header */}
+        <header className="app-header">
+          <div className="header-left">
+            <p className="app-subtitle">The Ignorant Apprentice</p>
+            <h1 className="app-title">Focus Companion</h1>
+            <p className="app-description">
+              Your robotic friend watches over you. Drift away, and face the consequences.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleSession}
-              className={`rounded-full px-6 py-2 text-sm font-semibold uppercase tracking-wide transition ${
-                sessionActive
-                  ? "bg-[color:var(--ink)] text-white"
-                  : "bg-[color:var(--accent)] text-white"
-              }`}
-            >
-              {sessionActive ? "End Session" : "Start Session"}
-            </button>
-            <button
-              onClick={() => {
-                audioEnabledRef.current = true;
-                raiseAlert("Manual override: scream test.", { force: true });
-              }}
-              className="rounded-full border border-[color:var(--ink)] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]"
-            >
-              Test Scream
-            </button>
+
+          <div className="header-right">
+            {/* Stats */}
+            <div className="stats-bar">
+              <div className="stat-item">
+                <span className="stat-label">Level</span>
+                <span className="stat-value">{level}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">XP</span>
+                <span className="stat-value">{totalXp}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Streak</span>
+                <span className="stat-value streak">{streak} days</span>
+              </div>
+            </div>
+
+            {/* Session Button */}
+            <div className="header-actions">
+              <Link href="/settings" className="ghost-btn">
+                Settings
+              </Link>
+              <button className="ghost-btn" onClick={handleSignOut}>
+                Sign Out
+              </button>
+              <button
+                onClick={isSessionActive ? endSession : startSession}
+                disabled={!canStartSession && !isSessionActive}
+                className={`session-btn ${isSessionActive ? "active" : ""}`}
+              >
+                {isSessionActive ? "End Session" : "Start Session"}
+              </button>
+            </div>
           </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1.05fr_1.35fr]">
-          <div className="flex flex-col gap-6 rounded-3xl bg-[color:var(--card)] p-6 shadow-[0_20px_60px_rgba(23,24,40,0.12)]">
-            <div className="flex flex-col gap-3">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                Focus Parameters
-              </p>
-              <label className="text-xs uppercase tracking-[0.28em] text-[color:var(--muted)]">
-                Topic Anchor
-              </label>
-              <input
-                value={topic}
-                onChange={(event) => setTopic(event.target.value)}
-                placeholder="Neural nets backpropagation"
-                className="w-full rounded-2xl border border-transparent bg-white px-4 py-3 text-base text-[color:var(--ink)] shadow-sm outline-none ring-2 ring-transparent focus:ring-[color:var(--accent)]"
-              />
-            </div>
+        {/* Two-column layout */}
+        <div className="content-grid">
+          {/* Left Column - Tab Selector */}
+          <div className="left-column">
+            <TabSelector />
 
-            <div className="rounded-2xl border border-dashed border-[color:var(--accent)]/40 bg-white px-4 py-4 text-sm text-[color:var(--muted)]">
-              The sentry only monitors this tab. It watches for topic drift in
-              your notes and if you leave the page.
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <label className="text-xs uppercase tracking-[0.28em] text-[color:var(--muted)]">
-                Sensitivity: {sensitivity}/5
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={sensitivity}
-                onChange={(event) => setSensitivity(Number(event.target.value))}
-                className="accent-[color:var(--accent)]"
-              />
-              <p className="text-xs text-[color:var(--muted)]">
-                Higher sensitivity = faster scream when unrelated words appear.
-              </p>
-            </div>
-
-            <div className="grid gap-4 rounded-2xl bg-[color:var(--ink)] p-4 text-white">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-white/70">
-                  Focus Profile
-                </p>
-                <p className="text-2xl font-semibold">
-                  {profile.focusMinutes.toFixed(1)} min
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-sm text-white/80">
-                <span>Sessions</span>
-                <span className="font-semibold text-white">
-                  {profile.sessions}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-white/80">
-                <span>Distractions</span>
-                <span className="font-semibold text-white">
-                  {profile.distractions}
-                </span>
-              </div>
-              <button
-                onClick={resetProfile}
-                className="rounded-full border border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide"
-              >
-                Reset Profile
-              </button>
+            {/* Tips Card */}
+            <div className="tips-card">
+              <h3>How it works</h3>
+              <ul>
+                <li>Select a subject to focus on</li>
+                <li>Start your session</li>
+                <li>Your companion watches you</li>
+                <li>Leave the tab = face the demon</li>
+                <li>Stay focused = earn XP!</li>
+              </ul>
             </div>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(23,24,40,0.12)]">
-              <div className="mb-4 flex items-center justify-between">
+          {/* Right Column - Focus Area */}
+          <div className="right-column">
+            <div className="focus-area">
+              <div className="focus-header">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                    Focus Notes
-                  </p>
-                  <p className="text-sm text-[color:var(--muted)]">
-                    Keep this aligned with your topic anchor.
-                  </p>
+                  <p className="focus-label">Current Focus</p>
+                  <h2 className="focus-subject">
+                    {activeTab ? activeTab.name : "Select a subject"}
+                  </h2>
                 </div>
-                <span
-                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
-                    sessionActive
-                      ? "bg-[color:var(--accent)] text-white"
-                      : "bg-[#f1f1f1] text-[color:var(--muted)]"
-                  }`}
+                <div
+                  className={`session-indicator ${isSessionActive ? "active" : ""}`}
                   style={
-                    sessionActive ? { animation: "glow 4s ease infinite" } : {}
+                    isSessionActive && activeTab
+                      ? { backgroundColor: activeTab.color }
+                      : undefined
                   }
                 >
-                  {sessionActive ? "Monitoring" : "Paused"}
-                </span>
+                  {isSessionActive ? "ACTIVE" : "PAUSED"}
+                </div>
               </div>
+
+              {/* Notes Area */}
               <textarea
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Write your study notes here. The sentry learns the words you use."
-                className="min-h-[260px] w-full rounded-2xl border border-transparent bg-[#f8f4eb] px-4 py-4 text-sm text-[color:var(--ink)] shadow-inner outline-none ring-2 ring-transparent focus:ring-[color:var(--accent)]"
+                className="notes-area"
+                placeholder={
+                  isSessionActive
+                    ? "Take notes here while you study... Your companion is watching!"
+                    : "Start a session to begin taking notes..."
+                }
+                disabled={!isSessionActive}
               />
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--muted)]">
-                <span>
-                  Topic keywords: {topicKeywords.length || "Add a topic above"}
-                </span>
-                <button
-                  onClick={() => setNotes("")}
-                  className="rounded-full border border-[color:var(--ink)]/30 px-4 py-2 text-[color:var(--ink)]"
-                >
-                  Clear Notes
-                </button>
+
+              {/* Focus Stats */}
+              {activeTab && (
+                <div className="focus-stats">
+                  <div className="focus-stat">
+                    <span className="focus-stat-value">
+                      {activeTab.focusMinutes.toFixed(0)}
+                    </span>
+                    <span className="focus-stat-label">Minutes</span>
+                  </div>
+                  <div className="focus-stat">
+                    <span className="focus-stat-value">{activeTab.xp}</span>
+                    <span className="focus-stat-label">XP Earned</span>
+                  </div>
+                  <div className="focus-stat">
+                    <span className="focus-stat-value danger">
+                      {activeTab.distractions}
+                    </span>
+                    <span className="focus-stat-label">Distractions</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mood Indicator */}
+            <div className="mood-indicator">
+              <p className="mood-label">Companion Mood</p>
+              <div className={`mood-display ${mood}`}>
+                {mood === "happy" && "Happy"}
+                {mood === "suspicious" && "Suspicious..."}
+                {mood === "angry" && "ANGRY!"}
+                {mood === "demon" && "DEMON MODE"}
               </div>
-            </div>
-
-            <div className="rounded-3xl border border-[color:var(--ink)]/10 bg-[color:var(--card)] p-6 text-sm text-[color:var(--muted)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                Portfolio Hook
-              </p>
-              <p className="mt-2 text-[color:var(--ink)]">
-                This MVP stores a lightweight focus profile locally. Later we can
-                plug in a learning model that adapts thresholds, predicts drift,
-                and suggests optimized study loops.
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {screamOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
-          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-black shadow-2xl">
-            <div className="absolute left-6 top-6 z-10 max-w-xs rounded-2xl bg-white/90 p-4 text-sm text-[color:var(--ink)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Sentry Triggered
-              </p>
-              <p className="mt-2 text-base font-semibold">{lastReason}</p>
-            </div>
-            <video
-              ref={videoRef}
-              className="h-[420px] w-full object-cover"
-              src="/scream.mp4"
-              loop
-              muted
-              playsInline
-              preload="none"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-black px-6 py-4 text-white">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/70">
-                Replace /public/scream.mp4 with your own clip
-              </span>
-              <button
-                onClick={() => setScreamOpen(false)}
-                className="rounded-full bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wide text-black"
-              >
-                I&apos;m Back
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </main>
+
+      {/* Companion (floating) */}
+      <Companion />
+
+      {/* Demon Overlay (lockout screen) */}
+      <DemonOverlay />
+
+      <style jsx>{`
+        .app-container {
+          position: relative;
+          min-height: 100vh;
+          overflow: hidden;
+          padding: 32px;
+        }
+
+        /* Background Orbs */
+        .bg-orb {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          filter: blur(60px);
+        }
+
+        .orb-1 {
+          width: 300px;
+          height: 300px;
+          background: rgba(255, 107, 74, 0.3);
+          top: -100px;
+          left: -100px;
+          animation: floaty 12s ease-in-out infinite;
+        }
+
+        .orb-2 {
+          width: 400px;
+          height: 400px;
+          background: rgba(102, 126, 234, 0.2);
+          top: 50%;
+          right: -150px;
+          animation: floaty 15s ease-in-out infinite reverse;
+        }
+
+        .orb-3 {
+          width: 250px;
+          height: 250px;
+          background: rgba(255, 210, 74, 0.25);
+          bottom: -80px;
+          left: 30%;
+          animation: floaty 10s ease-in-out infinite;
+        }
+
+        /* Main Content */
+        .main-content {
+          position: relative;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 32px;
+          margin-bottom: 40px;
+          flex-wrap: wrap;
+        }
+
+        .header-left {
+          flex: 1;
+          min-width: 280px;
+        }
+
+        .app-subtitle {
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 3px;
+          color: var(--muted);
+          margin: 0 0 8px 0;
+        }
+
+        .app-title {
+          font-size: 3rem;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 0;
+          line-height: 1.1;
+        }
+
+        .app-description {
+          font-size: 1rem;
+          color: var(--muted);
+          margin: 12px 0 0 0;
+          max-width: 400px;
+        }
+
+        .header-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 16px;
+        }
+
+        .stats-bar {
+          display: flex;
+          gap: 24px;
+        }
+
+        .stat-item {
+          text-align: center;
+        }
+
+        .stat-label {
+          display: block;
+          font-size: 0.625rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--muted);
+        }
+
+        .stat-value {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--ink);
+        }
+
+        .stat-value.streak {
+          color: var(--accent);
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .ghost-btn {
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: 2px solid var(--ink);
+          color: var(--ink);
+          background: transparent;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.85rem;
+          cursor: pointer;
+        }
+
+        .session-btn {
+          padding: 14px 32px;
+          font-size: 1rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: white;
+          background: var(--accent);
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .session-btn:hover:not(:disabled) {
+          transform: translateY(-3px);
+          box-shadow: 0 8px 24px rgba(255, 107, 74, 0.4);
+        }
+
+        .session-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .session-btn.active {
+          background: var(--ink);
+        }
+
+        /* Content Grid */
+        .content-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.5fr;
+          gap: 32px;
+        }
+
+        @media (max-width: 900px) {
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .left-column {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .tips-card {
+          background: white;
+          border-radius: 20px;
+          padding: 20px 24px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .tips-card h3 {
+          font-size: 0.875rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--muted);
+          margin: 0 0 12px 0;
+        }
+
+        .tips-card ul {
+          margin: 0;
+          padding: 0 0 0 20px;
+          font-size: 0.875rem;
+          color: var(--ink);
+        }
+
+        .tips-card li {
+          margin-bottom: 6px;
+        }
+
+        /* Focus Area */
+        .focus-area {
+          background: white;
+          border-radius: 24px;
+          padding: 28px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .focus-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 20px;
+        }
+
+        .focus-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          color: var(--muted);
+          margin: 0 0 4px 0;
+        }
+
+        .focus-subject {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--ink);
+          margin: 0;
+        }
+
+        .session-indicator {
+          padding: 8px 16px;
+          font-size: 0.625rem;
+          font-weight: 700;
+          letter-spacing: 1px;
+          color: var(--muted);
+          background: #f1f1f1;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+        }
+
+        .session-indicator.active {
+          color: white;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .notes-area {
+          width: 100%;
+          min-height: 200px;
+          padding: 16px;
+          font-size: 0.95rem;
+          font-family: inherit;
+          color: var(--ink);
+          background: var(--background);
+          border: 2px solid transparent;
+          border-radius: 16px;
+          resize: vertical;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+
+        .notes-area:focus {
+          border-color: var(--accent);
+        }
+
+        .notes-area:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .focus-stats {
+          display: flex;
+          justify-content: space-around;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+        }
+
+        .focus-stat {
+          text-align: center;
+        }
+
+        .focus-stat-value {
+          display: block;
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--ink);
+        }
+
+        .focus-stat-value.danger {
+          color: #dc2626;
+        }
+
+        .focus-stat-label {
+          font-size: 0.75rem;
+          color: var(--muted);
+        }
+
+        /* Mood Indicator */
+        .mood-indicator {
+          margin-top: 24px;
+          padding: 20px;
+          background: var(--ink);
+          border-radius: 16px;
+          text-align: center;
+        }
+
+        .mood-label {
+          font-size: 0.625rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          color: rgba(255, 255, 255, 0.6);
+          margin: 0 0 8px 0;
+        }
+
+        .mood-display {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .mood-display.happy {
+          color: #4ade80;
+        }
+
+        .mood-display.suspicious {
+          color: #fbbf24;
+        }
+
+        .mood-display.angry {
+          color: #f87171;
+          animation: shake 0.3s ease-in-out infinite;
+        }
+
+        .mood-display.demon {
+          color: #dc2626;
+          text-transform: uppercase;
+          letter-spacing: 4px;
+          animation: glitch 0.5s ease-in-out infinite;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          color: var(--muted);
+        }
+
+        .loading-eye {
+          width: 60px;
+          height: 60px;
+          background: radial-gradient(circle, #fff 0%, #667eea 100%);
+          border-radius: 50%;
+          margin-bottom: 16px;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-3px); }
+          75% { transform: translateX(3px); }
+        }
+
+        @keyframes glitch {
+          0%, 100% { transform: translateX(0); text-shadow: none; }
+          20% { transform: translateX(-2px); text-shadow: 2px 0 #00ffff; }
+          40% { transform: translateX(2px); text-shadow: -2px 0 #ff00ff; }
+          60% { transform: translateX(-1px); text-shadow: 1px 0 #00ffff; }
+          80% { transform: translateX(1px); text-shadow: -1px 0 #ff00ff; }
+        }
+      `}</style>
     </div>
   );
 }
