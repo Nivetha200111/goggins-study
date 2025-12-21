@@ -1,15 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/store/gameStore";
 import { Companion } from "@/components/Companion/Companion";
 import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+interface User {
+  username: string;
+  joinedAt: number;
+}
 
 export default function Home() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const {
     tabs,
     activeTabId,
@@ -22,31 +30,70 @@ export default function Home() {
     mood,
   } = useGameStore();
 
-  const activeTab = tabs.find((t: { id: string }) => t.id === activeTabId);
+  useEffect(() => {
+    const stored = localStorage.getItem("focus-companion-user");
+    if (stored) {
+      setUser(JSON.parse(stored));
+    } else {
+      router.push("/login");
+    }
+    setLoading(false);
+  }, [router]);
+
+  const activeTab = tabs.find((t) => t.id === activeTabId);
   const canStartSession = activeTabId !== null;
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     if (isSessionActive) {
       endSession();
     }
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
+    localStorage.removeItem("focus-companion-user");
     router.push("/login");
   };
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-eye" />
+        <p>Loading...</p>
+        <style jsx>{`
+          .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: var(--muted);
+          }
+          .loading-eye {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #fff 0%, #667eea 100%);
+            border-radius: 50%;
+            margin-bottom: 16px;
+            animation: pulse 1.5s ease-in-out infinite;
+          }
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
     <div className="app-container">
-      {/* Background decorations */}
       <div className="bg-orb orb-1" />
       <div className="bg-orb orb-2" />
       <div className="bg-orb orb-3" />
 
-      {/* Main Content */}
       <main className="main-content">
-        {/* Header */}
         <header className="app-header">
           <div className="header-left">
-            <p className="app-subtitle">The Ignorant Apprentice</p>
+            <p className="app-subtitle">Welcome back, {user.username}</p>
             <h1 className="app-title">Focus Companion</h1>
             <p className="app-description">
               Your robotic friend watches over you. Drift away, and face the consequences.
@@ -54,7 +101,6 @@ export default function Home() {
           </div>
 
           <div className="header-right">
-            {/* Stats */}
             <div className="stats-bar">
               <div className="stat-item">
                 <span className="stat-label">Level</span>
@@ -70,7 +116,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Session Button */}
             <div className="header-actions">
               <Link href="/settings" className="ghost-btn">
                 Settings
@@ -89,13 +134,10 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Two-column layout */}
         <div className="content-grid">
-          {/* Left Column - Tab Selector */}
           <div className="left-column">
             <TabSelector />
 
-            {/* Tips Card */}
             <div className="tips-card">
               <h3>How it works</h3>
               <ul>
@@ -108,7 +150,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Column - Focus Area */}
           <div className="right-column">
             <div className="focus-area">
               <div className="focus-header">
@@ -130,7 +171,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Notes Area */}
               <textarea
                 className="notes-area"
                 placeholder={
@@ -141,7 +181,6 @@ export default function Home() {
                 disabled={!isSessionActive}
               />
 
-              {/* Focus Stats */}
               {activeTab && (
                 <div className="focus-stats">
                   <div className="focus-stat">
@@ -164,7 +203,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Mood Indicator */}
             <div className="mood-indicator">
               <p className="mood-label">Companion Mood</p>
               <div className={`mood-display ${mood}`}>
@@ -178,10 +216,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Companion (floating) */}
       <Companion />
-
-      {/* Demon Overlay (lockout screen) */}
       <DemonOverlay />
 
       <style jsx>{`
@@ -191,15 +226,12 @@ export default function Home() {
           overflow: hidden;
           padding: 32px;
         }
-
-        /* Background Orbs */
         .bg-orb {
           position: absolute;
           border-radius: 50%;
           pointer-events: none;
           filter: blur(60px);
         }
-
         .orb-1 {
           width: 300px;
           height: 300px;
@@ -208,7 +240,6 @@ export default function Home() {
           left: -100px;
           animation: floaty 12s ease-in-out infinite;
         }
-
         .orb-2 {
           width: 400px;
           height: 400px;
@@ -217,7 +248,6 @@ export default function Home() {
           right: -150px;
           animation: floaty 15s ease-in-out infinite reverse;
         }
-
         .orb-3 {
           width: 250px;
           height: 250px;
@@ -226,15 +256,15 @@ export default function Home() {
           left: 30%;
           animation: floaty 10s ease-in-out infinite;
         }
-
-        /* Main Content */
+        @keyframes floaty {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-20px); }
+        }
         .main-content {
           position: relative;
           max-width: 1200px;
           margin: 0 auto;
         }
-
-        /* Header */
         .app-header {
           display: flex;
           justify-content: space-between;
@@ -243,12 +273,7 @@ export default function Home() {
           margin-bottom: 40px;
           flex-wrap: wrap;
         }
-
-        .header-left {
-          flex: 1;
-          min-width: 280px;
-        }
-
+        .header-left { flex: 1; min-width: 280px; }
         .app-subtitle {
           font-size: 0.75rem;
           font-weight: 600;
@@ -257,7 +282,6 @@ export default function Home() {
           color: var(--muted);
           margin: 0 0 8px 0;
         }
-
         .app-title {
           font-size: 3rem;
           font-weight: 700;
@@ -265,30 +289,20 @@ export default function Home() {
           margin: 0;
           line-height: 1.1;
         }
-
         .app-description {
           font-size: 1rem;
           color: var(--muted);
           margin: 12px 0 0 0;
           max-width: 400px;
         }
-
         .header-right {
           display: flex;
           flex-direction: column;
           align-items: flex-end;
           gap: 16px;
         }
-
-        .stats-bar {
-          display: flex;
-          gap: 24px;
-        }
-
-        .stat-item {
-          text-align: center;
-        }
-
+        .stats-bar { display: flex; gap: 24px; }
+        .stat-item { text-align: center; }
         .stat-label {
           display: block;
           font-size: 0.625rem;
@@ -297,24 +311,18 @@ export default function Home() {
           letter-spacing: 1px;
           color: var(--muted);
         }
-
         .stat-value {
           display: block;
           font-size: 1.5rem;
           font-weight: 700;
           color: var(--ink);
         }
-
-        .stat-value.streak {
-          color: var(--accent);
-        }
-
+        .stat-value.streak { color: var(--accent); }
         .header-actions {
           display: flex;
           align-items: center;
           gap: 12px;
         }
-
         .ghost-btn {
           padding: 10px 18px;
           border-radius: 999px;
@@ -326,7 +334,6 @@ export default function Home() {
           font-size: 0.85rem;
           cursor: pointer;
         }
-
         .session-btn {
           padding: 14px 32px;
           font-size: 1rem;
@@ -340,47 +347,31 @@ export default function Home() {
           cursor: pointer;
           transition: all 0.3s ease;
         }
-
         .session-btn:hover:not(:disabled) {
           transform: translateY(-3px);
           box-shadow: 0 8px 24px rgba(255, 107, 74, 0.4);
         }
-
-        .session-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .session-btn.active {
-          background: var(--ink);
-        }
-
-        /* Content Grid */
+        .session-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .session-btn.active { background: var(--ink); }
         .content-grid {
           display: grid;
           grid-template-columns: 1fr 1.5fr;
           gap: 32px;
         }
-
         @media (max-width: 900px) {
-          .content-grid {
-            grid-template-columns: 1fr;
-          }
+          .content-grid { grid-template-columns: 1fr; }
         }
-
         .left-column {
           display: flex;
           flex-direction: column;
           gap: 24px;
         }
-
         .tips-card {
           background: white;
           border-radius: 20px;
           padding: 20px 24px;
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
         }
-
         .tips-card h3 {
           font-size: 0.875rem;
           font-weight: 700;
@@ -389,33 +380,25 @@ export default function Home() {
           color: var(--muted);
           margin: 0 0 12px 0;
         }
-
         .tips-card ul {
           margin: 0;
           padding: 0 0 0 20px;
           font-size: 0.875rem;
           color: var(--ink);
         }
-
-        .tips-card li {
-          margin-bottom: 6px;
-        }
-
-        /* Focus Area */
+        .tips-card li { margin-bottom: 6px; }
         .focus-area {
           background: white;
           border-radius: 24px;
           padding: 28px;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
         }
-
         .focus-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 20px;
         }
-
         .focus-label {
           font-size: 0.75rem;
           font-weight: 600;
@@ -424,14 +407,12 @@ export default function Home() {
           color: var(--muted);
           margin: 0 0 4px 0;
         }
-
         .focus-subject {
           font-size: 1.75rem;
           font-weight: 700;
           color: var(--ink);
           margin: 0;
         }
-
         .session-indicator {
           padding: 8px 16px;
           font-size: 0.625rem;
@@ -442,12 +423,14 @@ export default function Home() {
           border-radius: 20px;
           transition: all 0.3s ease;
         }
-
         .session-indicator.active {
           color: white;
           animation: pulse 2s ease-in-out infinite;
         }
-
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+        }
         .notes-area {
           width: 100%;
           min-height: 200px;
@@ -462,16 +445,8 @@ export default function Home() {
           outline: none;
           transition: all 0.2s ease;
         }
-
-        .notes-area:focus {
-          border-color: var(--accent);
-        }
-
-        .notes-area:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
+        .notes-area:focus { border-color: var(--accent); }
+        .notes-area:disabled { opacity: 0.6; cursor: not-allowed; }
         .focus-stats {
           display: flex;
           justify-content: space-around;
@@ -479,28 +454,15 @@ export default function Home() {
           padding-top: 20px;
           border-top: 1px solid #eee;
         }
-
-        .focus-stat {
-          text-align: center;
-        }
-
+        .focus-stat { text-align: center; }
         .focus-stat-value {
           display: block;
           font-size: 2rem;
           font-weight: 700;
           color: var(--ink);
         }
-
-        .focus-stat-value.danger {
-          color: #dc2626;
-        }
-
-        .focus-stat-label {
-          font-size: 0.75rem;
-          color: var(--muted);
-        }
-
-        /* Mood Indicator */
+        .focus-stat-value.danger { color: #dc2626; }
+        .focus-stat-label { font-size: 0.75rem; color: var(--muted); }
         .mood-indicator {
           margin-top: 24px;
           padding: 20px;
@@ -508,7 +470,6 @@ export default function Home() {
           border-radius: 16px;
           text-align: center;
         }
-
         .mood-label {
           font-size: 0.625rem;
           font-weight: 600;
@@ -517,70 +478,20 @@ export default function Home() {
           color: rgba(255, 255, 255, 0.6);
           margin: 0 0 8px 0;
         }
-
         .mood-display {
           font-size: 1.25rem;
           font-weight: 700;
           color: white;
           transition: all 0.3s ease;
         }
-
-        .mood-display.happy {
-          color: #4ade80;
-        }
-
-        .mood-display.suspicious {
-          color: #fbbf24;
-        }
-
-        .mood-display.angry {
-          color: #f87171;
-          animation: shake 0.3s ease-in-out infinite;
-        }
-
-        .mood-display.demon {
-          color: #dc2626;
-          text-transform: uppercase;
-          letter-spacing: 4px;
-          animation: glitch 0.5s ease-in-out infinite;
-        }
-
-        /* Loading Screen */
-        .loading-screen {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          color: var(--muted);
-        }
-
-        .loading-eye {
-          width: 60px;
-          height: 60px;
-          background: radial-gradient(circle, #fff 0%, #667eea 100%);
-          border-radius: 50%;
-          margin-bottom: 16px;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.1); opacity: 0.8; }
-        }
-
+        .mood-display.happy { color: #4ade80; }
+        .mood-display.suspicious { color: #fbbf24; }
+        .mood-display.angry { color: #f87171; animation: shake 0.3s ease-in-out infinite; }
+        .mood-display.demon { color: #dc2626; text-transform: uppercase; letter-spacing: 4px; }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-3px); }
           75% { transform: translateX(3px); }
-        }
-
-        @keyframes glitch {
-          0%, 100% { transform: translateX(0); text-shadow: none; }
-          20% { transform: translateX(-2px); text-shadow: 2px 0 #00ffff; }
-          40% { transform: translateX(2px); text-shadow: -2px 0 #ff00ff; }
-          60% { transform: translateX(-1px); text-shadow: 1px 0 #00ffff; }
-          80% { transform: translateX(1px); text-shadow: -1px 0 #ff00ff; }
         }
       `}</style>
     </div>

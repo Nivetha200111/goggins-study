@@ -1,54 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-type Mode = "sign-in" | "sign-up";
+const VALID_INVITE_CODES = [
+  "FOCUS2024",
+  "STUDY4LIFE",
+  "GOGGINS",
+  "DISCIPLINE",
+];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("");
+  const [username, setUsername] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setStatus("");
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
     setLoading(true);
 
-    const supabase = getSupabaseBrowserClient();
+    const trimmedUsername = username.trim();
+    const trimmedCode = inviteCode.trim().toUpperCase();
 
-    if (mode === "sign-up") {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) {
-        setStatus(error.message);
-        setLoading(false);
-        return;
-      }
-
-      setStatus("Check your email to confirm your account.");
+    if (trimmedUsername.length < 2) {
+      setError("Username must be at least 2 characters");
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setStatus(error.message);
+    if (!VALID_INVITE_CODES.includes(trimmedCode)) {
+      setError("Invalid invite code");
       setLoading(false);
       return;
     }
+
+    localStorage.setItem(
+      "focus-companion-user",
+      JSON.stringify({
+        username: trimmedUsername,
+        joinedAt: Date.now(),
+      })
+    );
 
     setLoading(false);
     router.push("/");
@@ -57,68 +52,41 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <p className="kicker">Study Sentry</p>
-        <h1>{mode === "sign-in" ? "Welcome back" : "Create your account"}</h1>
-        <p className="subtitle">
-          {mode === "sign-in"
-            ? "Sign in to continue your study session."
-            : "Sign up to save your focus stats across devices."}
-        </p>
-
-        <div className="mode-toggle">
-          <button
-            type="button"
-            onClick={() => setMode("sign-in")}
-            className={mode === "sign-in" ? "active" : ""}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("sign-up")}
-            className={mode === "sign-up" ? "active" : ""}
-          >
-            Sign Up
-          </button>
-        </div>
+        <p className="kicker">Focus Companion</p>
+        <h1>Join the grind</h1>
+        <p className="subtitle">Enter your username and invite code to start.</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
-            Email
+            Username
             <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Your name"
               required
+              minLength={2}
+              maxLength={20}
+              autoFocus
             />
           </label>
           <label>
-            Password
+            Invite Code
             <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Minimum 6 characters"
+              type="text"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              placeholder="Enter invite code"
               required
-              minLength={6}
             />
           </label>
 
-          {status && <p className="status">{status}</p>}
+          {error && <p className="error">{error}</p>}
 
           <button type="submit" disabled={loading}>
-            {loading
-              ? "Working..."
-              : mode === "sign-in"
-                ? "Sign In"
-                : "Create Account"}
+            {loading ? "Joining..." : "Start Focusing"}
           </button>
         </form>
-
-        <p className="helper">
-          <Link href="/">Back to dashboard</Link>
-        </p>
       </div>
 
       <style jsx>{`
@@ -128,14 +96,13 @@ export default function LoginPage() {
           place-items: center;
           padding: 24px;
           background: var(--background);
-          color: var(--foreground);
         }
 
         .auth-card {
-          width: min(420px, 92vw);
+          width: min(400px, 92vw);
           background: white;
           border-radius: 24px;
-          padding: 28px;
+          padding: 32px;
           box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
         }
 
@@ -154,48 +121,29 @@ export default function LoginPage() {
         }
 
         .subtitle {
-          margin: 0 0 20px;
+          margin: 0 0 24px;
           color: var(--muted);
-        }
-
-        .mode-toggle {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-bottom: 16px;
-        }
-
-        .mode-toggle button {
-          padding: 10px 12px;
-          border-radius: 12px;
-          border: 2px solid transparent;
-          background: #f1ede2;
-          font-weight: 600;
-          cursor: pointer;
-        }
-
-        .mode-toggle button.active {
-          border-color: var(--accent);
-          background: #fff3eb;
         }
 
         .auth-form {
           display: grid;
-          gap: 14px;
+          gap: 16px;
         }
 
         label {
           font-size: 0.85rem;
-          color: var(--muted);
+          font-weight: 600;
+          color: var(--ink);
           display: grid;
-          gap: 6px;
+          gap: 8px;
         }
 
         input {
-          padding: 12px 14px;
+          padding: 14px 16px;
           border-radius: 12px;
           border: 2px solid transparent;
           background: #f8f4eb;
+          font-size: 1rem;
           outline: none;
         }
 
@@ -204,12 +152,13 @@ export default function LoginPage() {
         }
 
         button[type="submit"] {
-          margin-top: 6px;
-          padding: 12px 16px;
+          margin-top: 8px;
+          padding: 14px 16px;
           border: none;
           border-radius: 12px;
           background: var(--accent);
           color: white;
+          font-size: 1rem;
           font-weight: 700;
           cursor: pointer;
         }
@@ -219,15 +168,11 @@ export default function LoginPage() {
           cursor: not-allowed;
         }
 
-        .status {
-          color: var(--accent);
+        .error {
+          color: #dc2626;
           margin: 0;
-          font-size: 0.85rem;
-        }
-
-        .helper {
-          margin-top: 16px;
-          font-size: 0.85rem;
+          font-size: 0.9rem;
+          font-weight: 500;
         }
       `}</style>
     </div>
