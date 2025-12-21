@@ -14,11 +14,28 @@ export default function SettingsPage() {
     isSoundEnabled,
     toggleSound,
     whitelist,
+    addWhitelistDomain,
+    removeWhitelistDomain,
     addWhitelistKeyword,
     removeWhitelistKeyword,
   } = useGameStore();
 
+  const [domainInput, setDomainInput] = useState("");
+  const [domainStatus, setDomainStatus] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
+
+  const handleAddDomain = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = domainInput.trim();
+    if (!trimmed) return;
+    const added = addWhitelistDomain(trimmed);
+    if (!added) {
+      setDomainStatus("Enter a valid, new domain or URL.");
+      return;
+    }
+    setDomainStatus("Added.");
+    setDomainInput("");
+  };
 
   const handleAddKeyword = (event: FormEvent) => {
     event.preventDefault();
@@ -83,6 +100,46 @@ export default function SettingsPage() {
             <span className="slider"></span>
           </label>
         </div>
+      </section>
+
+      <section className="settings-card">
+        <h2>Whitelist Sites</h2>
+        <p className="settings-help">
+          Domains that appear in your notes count as on-topic and avoid demon mode.
+        </p>
+        <form onSubmit={handleAddDomain} className="whitelist-form">
+          <input
+            type="text"
+            value={domainInput}
+            onChange={(e) => {
+              setDomainInput(e.target.value);
+              setDomainStatus("");
+            }}
+            placeholder="Add a domain or URL (e.g. developer.mozilla.org)"
+            className="whitelist-input"
+          />
+          <button type="submit" className="whitelist-add">
+            Add
+          </button>
+        </form>
+        {domainStatus ? <p className="whitelist-status">{domainStatus}</p> : null}
+        {whitelist.domains.length === 0 ? (
+          <p className="whitelist-empty">No sites yet. Add one to get started.</p>
+        ) : (
+          <div className="whitelist-tags">
+            {whitelist.domains.map((domain) => (
+              <button
+                key={domain}
+                type="button"
+                className="whitelist-tag"
+                onClick={() => removeWhitelistDomain(domain)}
+                aria-label={`Remove ${domain}`}
+              >
+                {domain} ✕
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="settings-card">
@@ -287,6 +344,12 @@ export default function SettingsPage() {
           font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
+        }
+
+        .whitelist-status {
+          margin: 8px 0 0;
+          font-size: 0.8rem;
+          color: var(--muted);
         }
 
         .whitelist-empty {

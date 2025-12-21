@@ -22,6 +22,18 @@ interface StudyTab {
   createdAt: number;
 }
 
+function normalizeDomain(input: string): string | null {
+  const trimmed = input.trim().toLowerCase();
+  if (!trimmed) return null;
+  try {
+    const candidate = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+    const hostname = new URL(candidate).hostname.replace(/^www\./, "");
+    return hostname || null;
+  } catch {
+    return null;
+  }
+}
+
 interface GameState {
   mood: Mood;
   isSessionActive: boolean;
@@ -51,6 +63,8 @@ interface GameState {
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   setNotes: (tabId: string, notes: string) => void;
+  addWhitelistDomain: (domain: string) => boolean;
+  removeWhitelistDomain: (domain: string) => void;
   addWhitelistKeyword: (keyword: string) => void;
   removeWhitelistKeyword: (keyword: string) => void;
   recordActivity: () => void;
@@ -266,6 +280,28 @@ export const useGameStore = create<GameState>()(
           notesByTab: {
             ...state.notesByTab,
             [tabId]: notes,
+          },
+        })),
+
+      addWhitelistDomain: (domain: string) => {
+        const normalized = normalizeDomain(domain);
+        if (!normalized) return false;
+        const currentDomains = get().whitelist.domains;
+        if (currentDomains.includes(normalized)) return false;
+        set((state) => ({
+          whitelist: {
+            ...state.whitelist,
+            domains: [...state.whitelist.domains, normalized],
+          },
+        }));
+        return true;
+      },
+
+      removeWhitelistDomain: (domain: string) =>
+        set((state) => ({
+          whitelist: {
+            ...state.whitelist,
+            domains: state.whitelist.domains.filter((item) => item !== domain),
           },
         })),
 

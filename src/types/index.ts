@@ -37,6 +37,8 @@ export interface GameState {
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   setNotes: (tabId: string, notes: string) => void;
+  addWhitelistDomain: (domain: string) => boolean;
+  removeWhitelistDomain: (domain: string) => void;
   addWhitelistKeyword: (keyword: string) => void;
   removeWhitelistKeyword: (keyword: string) => void;
   recordActivity: () => void;

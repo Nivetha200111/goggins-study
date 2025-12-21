@@ -59,8 +59,14 @@ export function useDemonMode(config: DemonModeConfig = {}) {
         keywords.add(normalized);
       }
     });
+    whitelist.domains.forEach((domain) => {
+      const normalized = domain.trim().toLowerCase();
+      if (normalized) {
+        keywords.add(normalized);
+      }
+    });
     return Array.from(keywords);
-  }, [activeTab?.name, whitelist.keywords]);
+  }, [activeTab?.name, whitelist.keywords, whitelist.domains]);
 
   const isOnTopic = useMemo(() => {
     const normalizedNotes = notes.trim().toLowerCase();
