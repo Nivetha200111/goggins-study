@@ -2,6 +2,7 @@ let mascot = null;
 let currentMood = "happy";
 let sessionActive = false;
 let speechTimeout = null;
+let apologyOpen = false;
 
 const DIALOGUES = {
   happy: [
@@ -73,17 +74,13 @@ function updateMascot(mood, isActive) {
   mascot.className = "";
   mascot.classList.add(mood);
 
-  if (!isActive) {
-    mascot.classList.add("hidden");
-  } else {
-    mascot.classList.remove("hidden");
-  }
-
-  if (mood === "demon") {
-    mascot.classList.add("demon-mode");
-  }
+  mascot.classList.remove("hidden");
 
   speak(mood);
+
+  if (mood === "demon" && !apologyOpen) {
+    showApologyPrompt();
+  }
 }
 
 function speak(mood) {
@@ -120,6 +117,7 @@ function speakAloud(text, yell = false) {
 }
 
 function showApologyPrompt() {
+  if (apologyOpen) return;
   const overlay = document.createElement("div");
   overlay.id = "fc-apology-overlay";
   overlay.innerHTML = `
@@ -132,6 +130,7 @@ function showApologyPrompt() {
   `;
 
   document.body.appendChild(overlay);
+  apologyOpen = true;
 
   const input = overlay.querySelector("#fc-apology-input");
   const error = overlay.querySelector(".fc-error");
@@ -143,6 +142,7 @@ function showApologyPrompt() {
       const value = input.value.trim().toLowerCase();
       if (value === "i will focus") {
         chrome.runtime.sendMessage({ type: "APOLOGIZE" });
+        apologyOpen = false;
         overlay.remove();
       } else {
         error.textContent = "Wrong. Try again.";
