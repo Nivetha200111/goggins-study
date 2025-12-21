@@ -9,8 +9,8 @@ import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
 
 interface User {
+  id: string;
   username: string;
-  joinedAt: number;
 }
 
 export default function Home() {
@@ -28,17 +28,21 @@ export default function Home() {
     level,
     streak,
     mood,
+    loadUserData,
+    isLoading,
   } = useGameStore();
 
   useEffect(() => {
     const stored = localStorage.getItem("focus-companion-user");
     if (stored) {
-      setUser(JSON.parse(stored));
+      const parsed = JSON.parse(stored);
+      setUser(parsed);
+      loadUserData(parsed.id);
     } else {
       router.push("/login");
     }
     setLoading(false);
-  }, [router]);
+  }, [router, loadUserData]);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const canStartSession = activeTabId !== null;
@@ -51,7 +55,7 @@ export default function Home() {
     router.push("/login");
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div className="loading-screen">
         <div className="loading-eye" />

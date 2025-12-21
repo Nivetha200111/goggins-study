@@ -2,13 +2,62 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { GameState, Mood, StudyTab } from "@/types";
+import type { Mood } from "@/types";
+import {
+  supabase,
+  getUserTabs,
+  createTab,
+  updateTab,
+  deleteTab,
+  type StudyTab as DBStudyTab,
+} from "@/lib/supabase";
+
+interface StudyTab {
+  id: string;
+  name: string;
+  color: string;
+  focusMinutes: number;
+  distractions: number;
+  xp: number;
+  createdAt: number;
+}
+
+interface GameState {
+  mood: Mood;
+  isSessionActive: boolean;
+  tabs: StudyTab[];
+  activeTabId: string | null;
+  totalXp: number;
+  level: number;
+  streak: number;
+  lastActiveDate: string | null;
+  sessionStart: number | null;
+  lastActivityTime: number;
+  isDemonModeEnabled: boolean;
+  isMonitoringEnabled: boolean;
+  isSoundEnabled: boolean;
+  userId: string | null;
+  isLoading: boolean;
+
+  setMood: (mood: Mood) => void;
+  toggleDemonMode: () => void;
+  toggleMonitoring: () => void;
+  toggleSound: () => void;
+  startSession: () => void;
+  endSession: () => void;
+  addTab: (name: string, color: string) => void;
+  removeTab: (id: string) => void;
+  setActiveTab: (id: string) => void;
+  recordActivity: () => void;
+  addXp: (amount: number) => void;
+  addDistraction: () => void;
+  resetToHappy: () => void;
+  updateFocusTime: () => void;
+  loadUserData: (userId: string) => Promise<void>;
+  syncToCloud: () => Promise<void>;
+}
 
 const COLORS = ["#ff6b4a", "#4a9fff", "#4aff6b", "#ff4af0", "#ffd24a", "#4afff0"];
-
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
-}
 
 function getToday(): string {
   return new Date().toISOString().split("T")[0];
@@ -16,6 +65,18 @@ function getToday(): string {
 
 function calculateLevel(xp: number): number {
   return Math.floor(xp / 100) + 1;
+}
+
+function dbTabToLocal(tab: DBStudyTab): StudyTab {
+  return {
+    id: tab.id,
+    name: tab.name,
+    color: tab.color,
+    focusMinutes: tab.focus_minutes,
+    distractions: tab.distractions,
+    xp: tab.xp,
+    createdAt: new Date(tab.created_at).getTime(),
+  };
 }
 
 export const useGameStore = create<GameState>()(
@@ -34,6 +95,8 @@ export const useGameStore = create<GameState>()(
       isDemonModeEnabled: true,
       isMonitoringEnabled: true,
       isSoundEnabled: true,
+      userId: null,
+      isLoading: false,
 
       setMood: (mood: Mood) => set({ mood }),
 
@@ -45,6 +108,54 @@ export const useGameStore = create<GameState>()(
 
       toggleSound: () =>
         set((state) => ({ isSoundEnabled: !state.isSoundEnabled })),
+
+      loadUserData: async (userId: string) => {
+        set({ isLoading: true, userId });
+
+        const { data: user } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (user) {
+          const tabs = await getUserTabs(userId);
+          set({
+            totalXp: user.total_xp || 0,
+            level: calculateLevel(user.total_xp || 0),
+            streak: user.streak || 0,
+            lastActiveDate: user.last_active_date,
+            tabs: tabs.map(dbTabToLocal),
+            activeTabId: tabs.length > 0 ? tabs[0].id : null,
+            isLoading: false,
+          });
+        } else {
+          set({ isLoading: false });
+        }
+      },
+
+      syncToCloud: async () => {
+        const state = get();
+        if (!state.userId) return;
+
+        await supabase
+          .from("users")
+          .update({
+            total_xp: state.totalXp,
+            level: state.level,
+            streak: state.streak,
+            last_active_date: state.lastActiveDate,
+          })
+          .eq("id", state.userId);
+
+        for (const tab of state.tabs) {
+          await updateTab(tab.id, {
+            focus_minutes: tab.focusMinutes,
+            distractions: tab.distractions,
+            xp: tab.xp,
+          });
+        }
+      },
 
       startSession: () => {
         const today = getToday();
@@ -99,28 +210,31 @@ export const useGameStore = create<GameState>()(
                 : tab
             ),
           }));
+
+          get().syncToCloud();
         } else {
           set({ isSessionActive: false, sessionStart: null, mood: "happy" });
         }
       },
 
-      addTab: (name: string, color?: string) => {
-        const newTab: StudyTab = {
-          id: generateId(),
-          name,
-          color: color || COLORS[get().tabs.length % COLORS.length],
-          focusMinutes: 0,
-          distractions: 0,
-          xp: 0,
-          createdAt: Date.now(),
-        };
-        set((s) => ({
-          tabs: [...s.tabs, newTab],
-          activeTabId: s.activeTabId || newTab.id,
-        }));
+      addTab: async (name: string, color?: string) => {
+        const state = get();
+        if (!state.userId) return;
+
+        const tabColor = color || COLORS[state.tabs.length % COLORS.length];
+        const dbTab = await createTab(state.userId, name, tabColor);
+
+        if (dbTab) {
+          const newTab = dbTabToLocal(dbTab);
+          set((s) => ({
+            tabs: [...s.tabs, newTab],
+            activeTabId: s.activeTabId || newTab.id,
+          }));
+        }
       },
 
-      removeTab: (id: string) => {
+      removeTab: async (id: string) => {
+        await deleteTab(id);
         set((s) => {
           const newTabs = s.tabs.filter((t) => t.id !== id);
           return {
@@ -180,11 +294,6 @@ export const useGameStore = create<GameState>()(
     {
       name: "focus-companion-storage",
       partialize: (state) => ({
-        tabs: state.tabs,
-        totalXp: state.totalXp,
-        level: state.level,
-        streak: state.streak,
-        lastActiveDate: state.lastActiveDate,
         isDemonModeEnabled: state.isDemonModeEnabled,
         isMonitoringEnabled: state.isMonitoringEnabled,
         isSoundEnabled: state.isSoundEnabled,

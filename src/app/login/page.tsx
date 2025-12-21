@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const VALID_INVITE_CODES = [
-  "FOCUS2024",
-  "STUDY4LIFE",
-  "GOGGINS",
-  "DISCIPLINE",
-];
+import { validateInviteCode, createUser } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,7 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -31,22 +25,40 @@ export default function LoginPage() {
       return;
     }
 
-    if (!VALID_INVITE_CODES.includes(trimmedCode)) {
-      setError("Invalid invite code");
+    if (trimmedUsername.length > 20) {
+      setError("Username must be 20 characters or less");
       setLoading(false);
       return;
     }
 
-    localStorage.setItem(
-      "focus-companion-user",
-      JSON.stringify({
-        username: trimmedUsername,
-        joinedAt: Date.now(),
-      })
-    );
+    try {
+      const isValid = await validateInviteCode(trimmedCode);
+      if (!isValid) {
+        setError("Invalid or expired invite code");
+        setLoading(false);
+        return;
+      }
 
-    setLoading(false);
-    router.push("/");
+      const user = await createUser(trimmedUsername);
+      if (!user) {
+        setError("Failed to create account. Try again.");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem(
+        "focus-companion-user",
+        JSON.stringify({
+          id: user.id,
+          username: user.username,
+        })
+      );
+
+      router.push("/");
+    } catch {
+      setError("Something went wrong. Try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,7 +109,6 @@ export default function LoginPage() {
           padding: 24px;
           background: var(--background);
         }
-
         .auth-card {
           width: min(400px, 92vw);
           background: white;
@@ -105,7 +116,6 @@ export default function LoginPage() {
           padding: 32px;
           box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
         }
-
         .kicker {
           margin: 0;
           text-transform: uppercase;
@@ -113,23 +123,19 @@ export default function LoginPage() {
           font-size: 0.7rem;
           color: var(--muted);
         }
-
         h1 {
           margin: 8px 0;
           font-size: 2rem;
           color: var(--ink);
         }
-
         .subtitle {
           margin: 0 0 24px;
           color: var(--muted);
         }
-
         .auth-form {
           display: grid;
           gap: 16px;
         }
-
         label {
           font-size: 0.85rem;
           font-weight: 600;
@@ -137,7 +143,6 @@ export default function LoginPage() {
           display: grid;
           gap: 8px;
         }
-
         input {
           padding: 14px 16px;
           border-radius: 12px;
@@ -146,11 +151,9 @@ export default function LoginPage() {
           font-size: 1rem;
           outline: none;
         }
-
         input:focus {
           border-color: var(--accent);
         }
-
         button[type="submit"] {
           margin-top: 8px;
           padding: 14px 16px;
@@ -162,12 +165,10 @@ export default function LoginPage() {
           font-weight: 700;
           cursor: pointer;
         }
-
         button:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
-
         .error {
           color: #dc2626;
           margin: 0;
