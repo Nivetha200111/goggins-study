@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Whitelist } from "@/types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -33,6 +34,8 @@ export interface StudyTab {
   xp: number;
   created_at: string;
 }
+
+const DEFAULT_WHITELIST: Whitelist = { domains: [], apps: [], keywords: [] };
 
 export async function validateInviteCode(code: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -85,6 +88,41 @@ export async function getUser(userId: string): Promise<UserProfile | null> {
 
 export async function updateUser(userId: string, updates: Partial<UserProfile>): Promise<void> {
   await supabase.from("users").update(updates).eq("id", userId);
+}
+
+export async function getUserWhitelist(userId: string): Promise<Whitelist> {
+  const { data, error } = await supabase
+    .from("whitelists")
+    .select("domains, keywords, apps")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) {
+      console.error("Error loading whitelist:", error);
+    }
+    return DEFAULT_WHITELIST;
+  }
+
+  return {
+    domains: data.domains ?? [],
+    keywords: data.keywords ?? [],
+    apps: data.apps ?? [],
+  };
+}
+
+export async function setUserWhitelist(userId: string, whitelist: Whitelist): Promise<void> {
+  const { error } = await supabase.from("whitelists").upsert({
+    user_id: userId,
+    domains: whitelist.domains,
+    keywords: whitelist.keywords,
+    apps: whitelist.apps ?? [],
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error("Error saving whitelist:", error);
+  }
 }
 
 export async function getUserTabs(userId: string): Promise<StudyTab[]> {

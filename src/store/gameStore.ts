@@ -6,9 +6,11 @@ import type { Mood, Whitelist } from "@/types";
 import {
   supabase,
   getUserTabs,
+  getUserWhitelist,
   createTab,
   updateTab,
   deleteTab,
+  setUserWhitelist,
   type StudyTab as DBStudyTab,
 } from "@/lib/supabase";
 
@@ -140,7 +142,29 @@ export const useGameStore = create<GameState>()(
           .single();
 
         if (user) {
-          const tabs = await getUserTabs(userId);
+          const [tabs, remoteWhitelist] = await Promise.all([
+            getUserTabs(userId),
+            getUserWhitelist(userId),
+          ]);
+          const localWhitelist = get().whitelist;
+          const mergedWhitelist: Whitelist = {
+            domains: Array.from(
+              new Set([...(localWhitelist.domains || []), ...(remoteWhitelist.domains || [])])
+            ),
+            keywords: Array.from(
+              new Set([...(localWhitelist.keywords || []), ...(remoteWhitelist.keywords || [])])
+            ),
+            apps: Array.from(
+              new Set([...(localWhitelist.apps || []), ...(remoteWhitelist.apps || [])])
+            ),
+          };
+          if (
+            mergedWhitelist.domains.length !== remoteWhitelist.domains.length ||
+            mergedWhitelist.keywords.length !== remoteWhitelist.keywords.length ||
+            mergedWhitelist.apps.length !== remoteWhitelist.apps.length
+          ) {
+            void setUserWhitelist(userId, mergedWhitelist);
+          }
           set({
             totalXp: user.total_xp || 0,
             level: calculateLevel(user.total_xp || 0),
@@ -148,6 +172,7 @@ export const useGameStore = create<GameState>()(
             lastActiveDate: user.last_active_date,
             tabs: tabs.map(dbTabToLocal),
             activeTabId: tabs.length > 0 ? tabs[0].id : null,
+            whitelist: mergedWhitelist,
             isLoading: false,
           });
         } else {
@@ -176,6 +201,8 @@ export const useGameStore = create<GameState>()(
             xp: tab.xp,
           });
         }
+
+        await setUserWhitelist(state.userId, state.whitelist);
       },
 
       startSession: () => {
@@ -286,46 +313,61 @@ export const useGameStore = create<GameState>()(
       addWhitelistDomain: (domain: string) => {
         const normalized = normalizeDomain(domain);
         if (!normalized) return false;
-        const currentDomains = get().whitelist.domains;
-        if (currentDomains.includes(normalized)) return false;
-        set((state) => ({
-          whitelist: {
-            ...state.whitelist,
-            domains: [...state.whitelist.domains, normalized],
-          },
-        }));
+        const current = get().whitelist;
+        if (current.domains.includes(normalized)) return false;
+        const nextWhitelist = {
+          ...current,
+          domains: [...current.domains, normalized],
+        };
+        set({ whitelist: nextWhitelist });
+        const { userId } = get();
+        if (userId) {
+          void setUserWhitelist(userId, nextWhitelist);
+        }
         return true;
       },
 
-      removeWhitelistDomain: (domain: string) =>
-        set((state) => ({
-          whitelist: {
-            ...state.whitelist,
-            domains: state.whitelist.domains.filter((item) => item !== domain),
-          },
-        })),
+      removeWhitelistDomain: (domain: string) => {
+        const current = get().whitelist;
+        const nextWhitelist = {
+          ...current,
+          domains: current.domains.filter((item) => item !== domain),
+        };
+        set({ whitelist: nextWhitelist });
+        const { userId } = get();
+        if (userId) {
+          void setUserWhitelist(userId, nextWhitelist);
+        }
+      },
 
-      addWhitelistKeyword: (keyword: string) =>
-        set((state) => {
-          const normalized = keyword.trim().toLowerCase();
-          if (!normalized || state.whitelist.keywords.includes(normalized)) {
-            return state;
-          }
-          return {
-            whitelist: {
-              ...state.whitelist,
-              keywords: [...state.whitelist.keywords, normalized],
-            },
-          };
-        }),
+      addWhitelistKeyword: (keyword: string) => {
+        const normalized = keyword.trim().toLowerCase();
+        if (!normalized) return;
+        const current = get().whitelist;
+        if (current.keywords.includes(normalized)) return;
+        const nextWhitelist = {
+          ...current,
+          keywords: [...current.keywords, normalized],
+        };
+        set({ whitelist: nextWhitelist });
+        const { userId } = get();
+        if (userId) {
+          void setUserWhitelist(userId, nextWhitelist);
+        }
+      },
 
-      removeWhitelistKeyword: (keyword: string) =>
-        set((state) => ({
-          whitelist: {
-            ...state.whitelist,
-            keywords: state.whitelist.keywords.filter((item) => item !== keyword),
-          },
-        })),
+      removeWhitelistKeyword: (keyword: string) => {
+        const current = get().whitelist;
+        const nextWhitelist = {
+          ...current,
+          keywords: current.keywords.filter((item) => item !== keyword),
+        };
+        set({ whitelist: nextWhitelist });
+        const { userId } = get();
+        if (userId) {
+          void setUserWhitelist(userId, nextWhitelist);
+        }
+      },
 
       recordActivity: () => set({ lastActivityTime: Date.now() }),
 
