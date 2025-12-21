@@ -1,0 +1,102 @@
+.card {
+  width: 340px;
+  padding: 16px;
+  background: #0f111a;
+  color: #f8fafc;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+h1 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #1e293b;
+}
+
+.pill.active {
+  background: #0ea5e9;
+  color: #0b1020;
+  font-weight: 700;
+}
+
+.section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #1e293b;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.label {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  background: #0b1020;
+  color: #e2e8f0;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 12px;
+  background: #0ea5e9;
+  color: #0b1020;
+}
+
+.primary-btn.active {
+  background: #22c55e;
+}
+
+.ghost-btn {
+  padding: 10px 12px;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.status {
+  min-height: 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #0ea5e9;
+}

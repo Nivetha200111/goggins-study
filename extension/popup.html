@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Focus Companion</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="card">
+      <header class="header">
+        <div>
+          <p class="kicker">Focus Companion</p>
+          <h1>Control Panel</h1>
+        </div>
+        <div class="pill" id="session-pill">Inactive</div>
+      </header>
+
+      <section class="section">
+        <button id="session-btn" class="primary-btn">Start Session</button>
+        <p class="hint">Starts monitoring the active tab for focus.</p>
+      </section>
+
+      <section class="section">
+        <div class="row">
+          <div>
+            <p class="label">Whitelist current site</p>
+            <p class="hint" id="domain-hint">Adds this domain to allowed list.</p>
+          </div>
+          <button id="whitelist-btn" class="ghost-btn">Whitelist site</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <p class="label">Whitelist keywords</p>
+        <div class="row">
+          <input id="keyword-input" type="text" placeholder="e.g. tutorial, docs" />
+          <button id="add-keyword-btn" class="ghost-btn">Add keyword</button>
+        </div>
+        <p class="hint" id="keyword-hint">Pages whose title contains these words are allowed.</p>
+      </section>
+
+      <section class="section">
+        <p class="label">Whitelist snapshot</p>
+        <p class="hint" id="whitelist-preview">Loading...</p>
+      </section>
+
+      <p class="status" id="status"></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
