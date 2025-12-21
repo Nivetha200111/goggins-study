@@ -52,3 +52,34 @@ export interface Whitelist {
   apps: string[];
   keywords: string[];
 }
+
+// Window info used by Electron overlay and detection
+export interface WindowInfo {
+  title: string;
+  owner: string;
+  url?: string;
+  path?: string;
+  isStudying?: boolean;
+}
+
+// Electron preload API surface
+export interface ElectronAPI {
+  onWindowChanged: (callback: (data: WindowInfo) => void) => void;
+  onSessionStarted: (callback: () => void) => void;
+  onSessionEnded: (callback: () => void) => void;
+  startSession: () => Promise<void>;
+  endSession: () => Promise<void>;
+  getWhitelist: () => Promise<Whitelist>;
+  setWhitelist: (whitelist: Whitelist) => Promise<void>;
+  getStudyTopic: () => Promise<string>;
+  setStudyTopic: (topic: string) => Promise<void>;
+  setOverlayInteractive: (interactive: boolean) => void;
+  companionClicked: () => void;
+  platform: string;
+}
+
+declare global {
+  interface Window {
+    electronAPI?: ElectronAPI;
+  }
+}
