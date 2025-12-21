@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Mood } from "@/types";
+import type { ElectronAPI, Mood } from "@/types";
 import "./CompanionStyles.css";
 
 interface WindowInfo {
@@ -40,9 +40,15 @@ export function OverlayCompanion({
 }: OverlayCompanionProps) {
   const [apology, setApology] = useState("");
 
+  const getElectronAPI = (): ElectronAPI | undefined => {
+    if (typeof window === "undefined") return undefined;
+    return (window as Window & { electronAPI?: ElectronAPI }).electronAPI;
+  };
+
   const setOverlayInteractive = (interactive: boolean) => {
-    if (typeof window !== "undefined" && window.electronAPI) {
-      window.electronAPI.setOverlayInteractive(interactive);
+    const api = getElectronAPI();
+    if (api) {
+      api.setOverlayInteractive(interactive);
     }
   };
 
