@@ -68,6 +68,10 @@ export async function createUser(username: string): Promise<UserProfile | null> 
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      console.error("Username already exists:", username);
+      return null;
+    }
     console.error("Error creating user:", error);
     return null;
   }

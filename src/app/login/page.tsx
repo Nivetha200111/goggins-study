@@ -60,7 +60,19 @@ export default function LoginPage() {
 
       const user = await createUser(trimmedUsername);
       if (!user) {
-        setError("Failed to create account. Try again.");
+        const fallbackUser = await getUserByUsername(trimmedUsername);
+        if (fallbackUser) {
+          localStorage.setItem(
+            "focus-companion-user",
+            JSON.stringify({
+              id: fallbackUser.id,
+              username: fallbackUser.username,
+            })
+          );
+          router.push("/");
+          return;
+        }
+        setError("Username already exists or could not create account.");
         setLoading(false);
         return;
       }
