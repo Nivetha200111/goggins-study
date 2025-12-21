@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { useGameStore } from "@/store/gameStore";
 import Link from "next/link";
 
@@ -11,7 +13,20 @@ export default function SettingsPage() {
     toggleMonitoring,
     isSoundEnabled,
     toggleSound,
+    whitelist,
+    addWhitelistKeyword,
+    removeWhitelistKeyword,
   } = useGameStore();
+
+  const [keywordInput, setKeywordInput] = useState("");
+
+  const handleAddKeyword = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = keywordInput.trim().toLowerCase();
+    if (!trimmed) return;
+    addWhitelistKeyword(trimmed);
+    setKeywordInput("");
+  };
 
   return (
     <div className="settings-page">
@@ -68,6 +83,42 @@ export default function SettingsPage() {
             <span className="slider"></span>
           </label>
         </div>
+      </section>
+
+      <section className="settings-card">
+        <h2>Whitelist Keywords</h2>
+        <p className="settings-help">
+          Notes that include these keywords count as on-topic and avoid demon mode.
+        </p>
+        <form onSubmit={handleAddKeyword} className="whitelist-form">
+          <input
+            type="text"
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            placeholder="Add a keyword (e.g. calculus, react)"
+            className="whitelist-input"
+          />
+          <button type="submit" className="whitelist-add">
+            Add
+          </button>
+        </form>
+        {whitelist.keywords.length === 0 ? (
+          <p className="whitelist-empty">No keywords yet. Add one to get started.</p>
+        ) : (
+          <div className="whitelist-tags">
+            {whitelist.keywords.map((keyword) => (
+              <button
+                key={keyword}
+                type="button"
+                className="whitelist-tag"
+                onClick={() => removeWhitelistKeyword(keyword)}
+                aria-label={`Remove ${keyword}`}
+              >
+                {keyword} ✕
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="settings-card">
@@ -188,6 +239,60 @@ export default function SettingsPage() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+        }
+
+        .whitelist-form {
+          display: flex;
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .whitelist-input {
+          flex: 1;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 2px solid transparent;
+          background: #f8f4eb;
+          font-size: 0.95rem;
+          outline: none;
+        }
+
+        .whitelist-input:focus {
+          border-color: var(--accent);
+        }
+
+        .whitelist-add {
+          padding: 10px 18px;
+          border-radius: 12px;
+          border: none;
+          background: var(--accent);
+          color: white;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .whitelist-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 12px;
+        }
+
+        .whitelist-tag {
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: none;
+          background: #1a1d2f;
+          color: white;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .whitelist-empty {
+          margin: 12px 0 0;
+          color: var(--muted);
+          font-size: 0.85rem;
         }
 
         .toggle-label {

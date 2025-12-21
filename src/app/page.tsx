@@ -30,6 +30,9 @@ export default function Home() {
     mood,
     loadUserData,
     isLoading,
+    updateFocusTime,
+    notesByTab,
+    setNotes,
   } = useGameStore();
 
   useEffect(() => {
@@ -44,7 +47,16 @@ export default function Home() {
     setLoading(false);
   }, [router, loadUserData]);
 
+  useEffect(() => {
+    if (!isSessionActive) return;
+    const interval = setInterval(() => {
+      updateFocusTime();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isSessionActive, updateFocusTime]);
+
   const activeTab = tabs.find((t) => t.id === activeTabId);
+  const notesValue = activeTabId ? notesByTab[activeTabId] ?? "" : "";
   const canStartSession = activeTabId !== null;
 
   const handleSignOut = () => {
@@ -177,12 +189,18 @@ export default function Home() {
 
               <textarea
                 className="notes-area"
+                value={notesValue}
+                onChange={(e) => {
+                  if (activeTabId) {
+                    setNotes(activeTabId, e.target.value);
+                  }
+                }}
                 placeholder={
                   isSessionActive
                     ? "Take notes here while you study... Your companion is watching!"
                     : "Start a session to begin taking notes..."
                 }
-                disabled={!isSessionActive}
+                disabled={!isSessionActive || !activeTabId}
               />
 
               {activeTab && (

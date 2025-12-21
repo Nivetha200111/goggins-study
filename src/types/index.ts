@@ -15,6 +15,8 @@ export interface GameState {
   isSessionActive: boolean;
   tabs: StudyTab[];
   activeTabId: string | null;
+  notesByTab: Record<string, string>;
+  whitelist: Whitelist;
   totalXp: number;
   level: number;
   streak: number;
@@ -34,6 +36,9 @@ export interface GameState {
   addTab: (name: string, color: string) => void;
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
+  setNotes: (tabId: string, notes: string) => void;
+  addWhitelistKeyword: (keyword: string) => void;
+  removeWhitelistKeyword: (keyword: string) => void;
   recordActivity: () => void;
   addXp: (amount: number) => void;
   addDistraction: () => void;

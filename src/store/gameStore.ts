@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Mood } from "@/types";
+import type { Mood, Whitelist } from "@/types";
 import {
   supabase,
   getUserTabs,
@@ -27,6 +27,8 @@ interface GameState {
   isSessionActive: boolean;
   tabs: StudyTab[];
   activeTabId: string | null;
+  notesByTab: Record<string, string>;
+  whitelist: Whitelist;
   totalXp: number;
   level: number;
   streak: number;
@@ -48,6 +50,9 @@ interface GameState {
   addTab: (name: string, color: string) => void;
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
+  setNotes: (tabId: string, notes: string) => void;
+  addWhitelistKeyword: (keyword: string) => void;
+  removeWhitelistKeyword: (keyword: string) => void;
   recordActivity: () => void;
   addXp: (amount: number) => void;
   addDistraction: () => void;
@@ -86,6 +91,8 @@ export const useGameStore = create<GameState>()(
       isSessionActive: false,
       tabs: [],
       activeTabId: null,
+      notesByTab: {},
+      whitelist: { domains: [], apps: [], keywords: [] },
       totalXp: 0,
       level: 1,
       streak: 0,
@@ -237,8 +244,11 @@ export const useGameStore = create<GameState>()(
         await deleteTab(id);
         set((s) => {
           const newTabs = s.tabs.filter((t) => t.id !== id);
+          const newNotes = { ...s.notesByTab };
+          delete newNotes[id];
           return {
             tabs: newTabs,
+            notesByTab: newNotes,
             activeTabId:
               s.activeTabId === id
                 ? newTabs.length > 0
@@ -250,6 +260,36 @@ export const useGameStore = create<GameState>()(
       },
 
       setActiveTab: (id: string) => set({ activeTabId: id }),
+
+      setNotes: (tabId: string, notes: string) =>
+        set((state) => ({
+          notesByTab: {
+            ...state.notesByTab,
+            [tabId]: notes,
+          },
+        })),
+
+      addWhitelistKeyword: (keyword: string) =>
+        set((state) => {
+          const normalized = keyword.trim().toLowerCase();
+          if (!normalized || state.whitelist.keywords.includes(normalized)) {
+            return state;
+          }
+          return {
+            whitelist: {
+              ...state.whitelist,
+              keywords: [...state.whitelist.keywords, normalized],
+            },
+          };
+        }),
+
+      removeWhitelistKeyword: (keyword: string) =>
+        set((state) => ({
+          whitelist: {
+            ...state.whitelist,
+            keywords: state.whitelist.keywords.filter((item) => item !== keyword),
+          },
+        })),
 
       recordActivity: () => set({ lastActivityTime: Date.now() }),
 
@@ -297,6 +337,8 @@ export const useGameStore = create<GameState>()(
         isDemonModeEnabled: state.isDemonModeEnabled,
         isMonitoringEnabled: state.isMonitoringEnabled,
         isSoundEnabled: state.isSoundEnabled,
+        notesByTab: state.notesByTab,
+        whitelist: state.whitelist,
       }),
     }
   )
