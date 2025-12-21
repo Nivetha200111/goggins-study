@@ -1,0 +1,302 @@
+#focus-companion-mascot {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+}
+
+#focus-companion-mascot.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.5);
+}
+
+.fc-body {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ff6b4a 0%, #ff8a6a 100%);
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(255, 107, 74, 0.4);
+  transition: all 0.3s ease;
+}
+
+.fc-antenna {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 20px;
+  background: #1a1d2f;
+  border-radius: 4px;
+}
+
+.fc-antenna-ball {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: #ff6b4a;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.fc-face {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-eyes {
+  display: flex;
+  gap: 16px;
+}
+
+.fc-eye {
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  position: relative;
+}
+
+.fc-pupil {
+  width: 8px;
+  height: 8px;
+  background: #1a1d2f;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.fc-mouth {
+  width: 20px;
+  height: 10px;
+  border-bottom: 3px solid #1a1d2f;
+  border-radius: 0 0 10px 10px;
+}
+
+.fc-tentacles {
+  display: none;
+}
+
+.fc-speech {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1d2f;
+  max-width: 200px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  margin-top: 8px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.fc-speech.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Suspicious */
+#focus-companion-mascot.suspicious .fc-body {
+  background: linear-gradient(135deg, #f6a14a 0%, #ffc14a 100%);
+  box-shadow: 0 8px 32px rgba(246, 161, 74, 0.4);
+}
+
+#focus-companion-mascot.suspicious .fc-antenna-ball {
+  background: #f6a14a;
+}
+
+#focus-companion-mascot.suspicious .fc-eye {
+  width: 18px;
+  height: 12px;
+}
+
+/* Angry */
+#focus-companion-mascot.angry .fc-body {
+  background: linear-gradient(135deg, #ff3b30 0%, #ff6b6b 100%);
+  box-shadow: 0 8px 32px rgba(255, 59, 48, 0.5);
+  animation: shake 0.3s ease-in-out infinite;
+}
+
+#focus-companion-mascot.angry .fc-antenna-ball {
+  background: #ff3b30;
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+#focus-companion-mascot.angry .fc-mouth {
+  border-bottom: none;
+  border-top: 3px solid #1a1d2f;
+  border-radius: 10px 10px 0 0;
+}
+
+#focus-companion-mascot.angry .fc-speech {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* Demon */
+#focus-companion-mascot.demon .fc-body {
+  background: linear-gradient(135deg, #6f3cff 0%, #9f6cff 100%);
+  box-shadow: 0 0 40px rgba(111, 60, 255, 0.8), 0 0 80px rgba(220, 38, 38, 0.4);
+  animation: demonPulse 0.5s ease-in-out infinite;
+  width: 100px;
+  height: 100px;
+}
+
+#focus-companion-mascot.demon .fc-eyes {
+  gap: 0;
+}
+
+#focus-companion-mascot.demon .fc-eye.right {
+  display: none;
+}
+
+#focus-companion-mascot.demon .fc-eye.left {
+  width: 30px;
+  height: 30px;
+}
+
+#focus-companion-mascot.demon .fc-pupil {
+  width: 16px;
+  height: 16px;
+  background: #dc2626;
+}
+
+#focus-companion-mascot.demon .fc-tentacles {
+  display: block;
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+}
+
+#focus-companion-mascot.demon .fc-tentacle {
+  position: absolute;
+  width: 8px;
+  height: 30px;
+  background: #6f3cff;
+  border-radius: 4px;
+  animation: tentacle 1s ease-in-out infinite;
+}
+
+#focus-companion-mascot.demon .fc-tentacle.t1 { left: 10%; animation-delay: 0s; }
+#focus-companion-mascot.demon .fc-tentacle.t2 { left: 30%; animation-delay: 0.2s; }
+#focus-companion-mascot.demon .fc-tentacle.t3 { left: 55%; animation-delay: 0.4s; }
+#focus-companion-mascot.demon .fc-tentacle.t4 { left: 75%; animation-delay: 0.6s; }
+
+#focus-companion-mascot.demon .fc-speech {
+  color: #dc2626;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: #1a1d2f;
+  color: white;
+}
+
+/* Apology Overlay */
+#fc-apology-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.fc-apology-box {
+  text-align: center;
+  color: white;
+}
+
+.fc-apology-box h2 {
+  font-size: 48px;
+  margin: 0 0 16px;
+  color: #dc2626;
+  letter-spacing: 8px;
+  animation: glitch 0.5s ease-in-out infinite;
+}
+
+.fc-apology-box p {
+  margin: 0 0 24px;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.fc-apology-box input {
+  width: 300px;
+  padding: 16px 24px;
+  font-size: 18px;
+  border: 2px solid #dc2626;
+  border-radius: 12px;
+  background: transparent;
+  color: white;
+  text-align: center;
+  outline: none;
+}
+
+.fc-apology-box .fc-error {
+  color: #dc2626;
+  font-weight: 600;
+  margin-top: 16px;
+}
+
+#fc-apology-overlay.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.2); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes demonPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes tentacle {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+
+@keyframes glitch {
+  0%, 100% { text-shadow: none; }
+  20% { text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff; }
+  40% { text-shadow: -2px 0 #00ffff, 2px 0 #ff00ff; }
+  60% { text-shadow: 1px 0 #00ffff, -1px 0 #ff00ff; }
+}
