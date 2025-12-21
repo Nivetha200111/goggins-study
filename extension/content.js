@@ -1,3 +1,4 @@
+console.log("Focus Companion content script loaded");
 let mascot = null;
 let currentMood = "happy";
 let sessionActive = false;
@@ -33,6 +34,7 @@ const DIALOGUES = {
 
 function createMascot() {
   if (mascot) return;
+  console.log("Creating mascot...");
 
   mascot = document.createElement("div");
   mascot.id = "focus-companion-mascot";
