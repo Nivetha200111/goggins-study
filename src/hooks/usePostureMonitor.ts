@@ -252,9 +252,8 @@ export function usePostureMonitor() {
 
         const faceLandmarks = faceResult?.faceLandmarks?.[0] || null;
         const transformMatrix = faceResult?.facialTransformationMatrixes?.[0]?.data;
-        const hasFace = Boolean(faceLandmarks && transformMatrix);
 
-        if (!hasFace) {
+        if (!faceLandmarks || !transformMatrix) {
           updateTimer(gazeAwaySinceRef, true);
           updateTimer(postureBadSinceRef, false);
           updateTimer(lookingDownSinceRef, false);
