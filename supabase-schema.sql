@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT NOT NULL,
+  invite_code TEXT,
   total_xp INTEGER DEFAULT 0,
   level INTEGER DEFAULT 1,
   streak INTEGER DEFAULT 0,
@@ -13,12 +14,15 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Enforce unique usernames (case-insensitive)
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_idx ON users (lower(username));
+CREATE UNIQUE INDEX IF NOT EXISTS users_invite_code_lower_idx
+  ON users (lower(invite_code))
+  WHERE invite_code IS NOT NULL;
 
 -- Invite codes table
 CREATE TABLE IF NOT EXISTS invite_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
-  uses_remaining INTEGER, -- NULL = unlimited
+  uses_remaining INTEGER DEFAULT 1,
   expires_at TIMESTAMPTZ, -- NULL = never expires
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -65,8 +69,8 @@ CREATE POLICY "Allow all for whitelists" ON whitelists FOR ALL USING (true);
 
 -- Insert some invite codes
 INSERT INTO invite_codes (code, uses_remaining) VALUES
-  ('FOCUS2024', NULL),
-  ('GOGGINS', NULL),
-  ('DISCIPLINE', 100),
-  ('STUDY4LIFE', 50)
+  ('FOCUS2024', 1),
+  ('GOGGINS', 1),
+  ('DISCIPLINE', 1),
+  ('STUDY4LIFE', 1)
 ON CONFLICT (code) DO NOTHING;

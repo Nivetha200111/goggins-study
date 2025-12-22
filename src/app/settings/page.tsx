@@ -107,6 +107,9 @@ export default function SettingsPage() {
         <p className="settings-help">
           Camera access is only used on-device for real-time checks.
         </p>
+        <p className="settings-help">
+          If a phone is detected, alerts continue until the phone is gone and both hands are up.
+        </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="posture-debug-toggle">
             Show Debug Overlay

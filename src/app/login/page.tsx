@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { validateInviteCode, createUser, getUserByUsername } from "@/lib/supabase";
+import {
+  validateInviteCode,
+  createUser,
+  getUserByUsername,
+  updateUser,
+} from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,8 +37,28 @@ export default function LoginPage() {
     }
 
     try {
+      if (!trimmedCode) {
+        setError("Invite code is required.");
+        setLoading(false);
+        return;
+      }
+
       const existingUser = await getUserByUsername(trimmedUsername);
       if (existingUser) {
+        if (!existingUser.invite_code) {
+          const isValid = await validateInviteCode(trimmedCode);
+          if (!isValid) {
+            setError("Invalid or already used invite code.");
+            setLoading(false);
+            return;
+          }
+          await updateUser(existingUser.id, { invite_code: trimmedCode });
+        } else if (existingUser.invite_code.toUpperCase() !== trimmedCode) {
+          setError("Incorrect invite code.");
+          setLoading(false);
+          return;
+        }
+
         localStorage.setItem(
           "focus-companion-user",
           JSON.stringify({
@@ -45,20 +70,14 @@ export default function LoginPage() {
         return;
       }
 
-      if (!trimmedCode) {
-        setError("Invite code is required for new users.");
-        setLoading(false);
-        return;
-      }
-
       const isValid = await validateInviteCode(trimmedCode);
       if (!isValid) {
-        setError("Invalid or expired invite code");
+        setError("Invalid or already used invite code.");
         setLoading(false);
         return;
       }
 
-      const user = await createUser(trimmedUsername);
+      const user = await createUser(trimmedUsername, trimmedCode);
       if (!user) {
         const fallbackUser = await getUserByUsername(trimmedUsername);
         if (fallbackUser) {
@@ -97,7 +116,7 @@ export default function LoginPage() {
       <div className="auth-card">
         <p className="kicker">Focus Companion</p>
         <h1>Join the grind</h1>
-        <p className="subtitle">Enter your username and invite code to start.</p>
+        <p className="subtitle">Use your invite code as your password to log in.</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
@@ -119,7 +138,8 @@ export default function LoginPage() {
               type="text"
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
-              placeholder="Invite code (first time only)"
+              placeholder="Invite code (required every time)"
+              required
             />
           </label>
 

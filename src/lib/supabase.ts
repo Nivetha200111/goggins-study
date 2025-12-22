@@ -17,6 +17,7 @@ export interface InviteCode {
 export interface UserProfile {
   id: string;
   username: string;
+  invite_code: string | null;
   total_xp: number;
   level: number;
   streak: number;
@@ -48,22 +49,29 @@ export async function validateInviteCode(code: string): Promise<boolean> {
 
   const now = new Date();
   if (data.expires_at && new Date(data.expires_at) < now) return false;
-  if (data.uses_remaining !== null && data.uses_remaining <= 0) return false;
+  const usesRemaining = data.uses_remaining ?? 1;
+  if (usesRemaining <= 0) return false;
 
-  if (data.uses_remaining !== null) {
-    await supabase
-      .from("invite_codes")
-      .update({ uses_remaining: data.uses_remaining - 1 })
-      .eq("id", data.id);
+  const { error: updateError } = await supabase
+    .from("invite_codes")
+    .update({ uses_remaining: usesRemaining - 1 })
+    .eq("id", data.id);
+
+  if (updateError) {
+    console.error("Error updating invite code:", updateError);
+    return false;
   }
 
   return true;
 }
 
-export async function createUser(username: string): Promise<UserProfile | null> {
+export async function createUser(
+  username: string,
+  inviteCode: string
+): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("users")
-    .insert({ username })
+    .insert({ username, invite_code: inviteCode.toUpperCase() })
     .select()
     .single();
 

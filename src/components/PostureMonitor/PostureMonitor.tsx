@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function formatAngle(value: number | null): string {
   if (value === null || Number.isNaN(value)) return "--";
-  return `${value.toFixed(1)}°`;
+  return `${value.toFixed(1)} deg`;
 }
 
 export function PostureMonitor() {
@@ -60,6 +60,10 @@ export function PostureMonitor() {
   const downLabel =
     debug?.isLookingDown === null ? "--" : debug?.isLookingDown ? "Yes" : "No";
   const phoneLabel = debug?.hasPhone ? "Yes" : "No";
+  const handsLabel = debug ? String(debug.handsDetected) : "--";
+  const handsUpLabel =
+    debug?.handsUp === null ? "--" : debug?.handsUp ? "Yes" : "No";
+  const phonePenaltyLabel = debug?.phonePenaltyActive ? "Active" : "Clear";
   const calibrationLabel =
     debug?.status === "calibrating"
       ? `Calibrating ${debug.calibrationFrames}/${debug.calibrationTarget}`
@@ -110,6 +114,20 @@ export function PostureMonitor() {
             <span>Phone</span>
             <strong>{phoneLabel}</strong>
           </div>
+          <div className="stat">
+            <span>Hands</span>
+            <strong>{handsLabel}</strong>
+          </div>
+          <div className="stat">
+            <span>Hands Up</span>
+            <strong>{handsUpLabel}</strong>
+          </div>
+          <div className="stat">
+            <span>Phone Lock</span>
+            <strong className={debug?.phonePenaltyActive ? "status error" : undefined}>
+              {phonePenaltyLabel}
+            </strong>
+          </div>
           <div className="angles">
             <span>Yaw</span>
             <strong>{formatAngle(debug?.yaw ?? null)}</strong>
@@ -131,6 +149,9 @@ export function PostureMonitor() {
         </div>
       </div>
       {calibrationLabel ? <div className="posture-note">{calibrationLabel}</div> : null}
+      {debug?.phonePenaltyActive ? (
+        <div className="posture-warning">Phone lock: put it away and raise both hands.</div>
+      ) : null}
       {debug?.error ? <div className="posture-error">{debug.error}</div> : null}
       <style jsx>{`
         .posture-debug {
@@ -232,6 +253,12 @@ export function PostureMonitor() {
           padding: 8px 12px;
           border-top: 1px solid #fee2e2;
           color: #dc2626;
+          font-weight: 600;
+        }
+        .posture-warning {
+          padding: 8px 12px;
+          border-top: 1px solid #fde68a;
+          color: #92400e;
           font-weight: 600;
         }
       `}</style>

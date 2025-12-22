@@ -16,6 +16,9 @@ const LOOKING_DOWN_ALERT_MS = 20 * 1000;
 const PHONE_ALERT_MS = 5 * 1000;
 const ALERT_REPEAT_MS = 15 * 1000;
 const DEBUG_UPDATE_MS = 500;
+const PHONE_PENALTY_REPEAT_MS = 6000;
+const PHONE_CLEAR_CONFIRM_MS = 2000;
+const HANDS_UP_WRIST_Y = 0.6;
 
 const THRESHOLDS = {
   yawAwayDeg: 24,
@@ -36,6 +39,9 @@ type FaceLandmarkerResult = {
 type ObjectDetectorResult = {
   detections?: { categories?: { categoryName?: string; score?: number }[] }[];
 };
+type HandLandmarkerResult = {
+  landmarks?: NormalizedLandmark[][];
+};
 
 type HeadAngles = { yaw: number; pitch: number; roll: number };
 type Baseline = HeadAngles & { noseRatio: number };
@@ -47,6 +53,9 @@ export type PostureDebugState = {
   isSittingStraight: boolean | null;
   isLookingDown: boolean | null;
   hasPhone: boolean;
+  handsDetected: number;
+  handsUp: boolean | null;
+  phonePenaltyActive: boolean;
   yaw: number | null;
   pitch: number | null;
   roll: number | null;
@@ -70,6 +79,9 @@ const INITIAL_DEBUG_STATE: PostureDebugState = {
   isSittingStraight: null,
   isLookingDown: null,
   hasPhone: false,
+  handsDetected: 0,
+  handsUp: null,
+  phonePenaltyActive: false,
   yaw: null,
   pitch: null,
   roll: null,
@@ -91,6 +103,9 @@ const FACE_MODEL_PATH =
 const OBJECT_MODEL_PATH =
   process.env.NEXT_PUBLIC_OBJECT_MODEL_PATH ||
   "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite";
+const HAND_MODEL_PATH =
+  process.env.NEXT_PUBLIC_HAND_MODEL_PATH ||
+  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 
 function getHeadAngles(matrixData: Float32Array | number[]): HeadAngles {
   const m00 = matrixData[0];
@@ -157,6 +172,14 @@ function hasPhoneDetection(result: ObjectDetectorResult | null): boolean {
   );
 }
 
+function areHandsUp(landmarks: NormalizedLandmark[][]): boolean {
+  if (!landmarks || landmarks.length < 2) return false;
+  const leftWrist = landmarks[0]?.[0];
+  const rightWrist = landmarks[1]?.[0];
+  if (!leftWrist || !rightWrist) return false;
+  return leftWrist.y < HANDS_UP_WRIST_Y && rightWrist.y < HANDS_UP_WRIST_Y;
+}
+
 export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const { isSessionActive, isMonitoringEnabled, isPostureMonitoringEnabled, addDistraction } =
     useGameStore();
@@ -171,6 +194,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const streamRef = useRef<MediaStream | null>(null);
   const faceLandmarkerRef = useRef<any>(null);
   const objectDetectorRef = useRef<any>(null);
+  const handLandmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number>(0);
 
@@ -182,6 +206,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const lookingDownSinceRef = useRef<number | null>(null);
   const phoneSinceRef = useRef<number | null>(null);
   const lastAlertRef = useRef<number>(0);
+  const phonePenaltyActiveRef = useRef(false);
+  const phonePenaltyLastShoutRef = useRef<number>(0);
+  const phoneClearSinceRef = useRef<number | null>(null);
   const debugStateRef = useRef<PostureDebugState>(INITIAL_DEBUG_STATE);
   const debugEnabledRef = useRef(Boolean(options.debug));
   const lastDebugUpdateRef = useRef<number>(0);
@@ -237,6 +264,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       lookingDownSinceRef.current = null;
       phoneSinceRef.current = null;
       lastAlertRef.current = 0;
+      phonePenaltyActiveRef.current = false;
+      phonePenaltyLastShoutRef.current = 0;
+      phoneClearSinceRef.current = null;
       updateDebugState({ ...INITIAL_DEBUG_STATE, status: "inactive" });
     };
 
@@ -252,8 +282,12 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       if (objectDetectorRef.current?.close) {
         objectDetectorRef.current.close();
       }
+      if (handLandmarkerRef.current?.close) {
+        handLandmarkerRef.current.close();
+      }
       faceLandmarkerRef.current = null;
       objectDetectorRef.current = null;
+      handLandmarkerRef.current = null;
 
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
@@ -294,6 +328,22 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       addDistractionRef.current();
     };
 
+    const triggerPhonePenalty = () => {
+      if (phonePenaltyActiveRef.current) return;
+      phonePenaltyActiveRef.current = true;
+      phonePenaltyLastShoutRef.current = 0;
+      phoneClearSinceRef.current = null;
+      speakRef.current("Put the phone away. Hands up where I can see them.", true);
+      addDistractionRef.current();
+    };
+
+    const maybePhonePenaltyShout = () => {
+      const now = Date.now();
+      if (now - phonePenaltyLastShoutRef.current < PHONE_PENALTY_REPEAT_MS) return;
+      phonePenaltyLastShoutRef.current = now;
+      speakRef.current("Phone away. Hands up where I can see them.", true);
+    };
+
     const startDetection = () => {
       const detect = () => {
         if (cancelled || !videoRef.current || !faceLandmarkerRef.current) {
@@ -315,6 +365,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
 
         let faceResult: FaceLandmarkerResult | null = null;
         let objectResult: ObjectDetectorResult | null = null;
+        let handResult: HandLandmarkerResult | null = null;
         try {
           faceResult = faceLandmarkerRef.current.detectForVideo(
             video,
@@ -326,14 +377,21 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               performance.now()
             ) as ObjectDetectorResult;
           }
+          if (handLandmarkerRef.current) {
+            handResult = handLandmarkerRef.current.detectForVideo(
+              video,
+              performance.now()
+            ) as HandLandmarkerResult;
+          }
         } catch {
           rafRef.current = requestAnimationFrame(detect);
           return;
         }
 
         const hasPhone = hasPhoneDetection(objectResult);
-        updateTimer(phoneSinceRef, hasPhone);
-
+        const handLandmarks = handResult?.landmarks ?? [];
+        const handsDetected = handLandmarks.length;
+        const handsUp = handsDetected >= 2 ? areHandsUp(handLandmarks) : null;
         const faceLandmarks = faceResult?.faceLandmarks?.[0] || null;
         const transformMatrix = faceResult?.facialTransformationMatrixes?.[0]?.data;
 
@@ -345,6 +403,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
             status: "no-face",
             hasFace: false,
             hasPhone,
+            handsDetected,
+            handsUp,
+            phonePenaltyActive: phonePenaltyActiveRef.current,
             isLookingForward: null,
             isSittingStraight: null,
             isLookingDown: null,
@@ -376,6 +437,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               status: "calibrating",
               hasFace: true,
               hasPhone,
+              handsDetected,
+              handsUp,
+              phonePenaltyActive: phonePenaltyActiveRef.current,
               isLookingForward: null,
               isSittingStraight: null,
               isLookingDown: null,
@@ -411,6 +475,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               status: "tracking",
               hasFace: true,
               hasPhone,
+              handsDetected,
+              handsUp,
+              phonePenaltyActive: phonePenaltyActiveRef.current,
               isLookingForward,
               isSittingStraight,
               isLookingDown,
@@ -428,6 +495,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               status: "calibrating",
               hasFace: true,
               hasPhone,
+              handsDetected,
+              handsUp,
+              phonePenaltyActive: phonePenaltyActiveRef.current,
               isLookingForward: null,
               isSittingStraight: null,
               isLookingDown: null,
@@ -444,8 +514,46 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
         }
 
         const nowTime = Date.now();
+
+        if (phonePenaltyActiveRef.current) {
+          const clearCondition = !hasPhone && handsUp === true;
+          updateTimer(phoneClearSinceRef, clearCondition);
+          if (
+            phoneClearSinceRef.current &&
+            nowTime - phoneClearSinceRef.current > PHONE_CLEAR_CONFIRM_MS
+          ) {
+            phonePenaltyActiveRef.current = false;
+            phoneClearSinceRef.current = null;
+            phoneSinceRef.current = null;
+            updateDebugState({ phonePenaltyActive: false });
+          } else {
+            maybePhonePenaltyShout();
+            updateDebugState({
+              phonePenaltyActive: true,
+              handsDetected,
+              handsUp,
+              hasPhone,
+            });
+            rafRef.current = requestAnimationFrame(detect);
+            return;
+          }
+        }
+
+        updateTimer(phoneSinceRef, hasPhone);
         const phoneAlert =
           phoneSinceRef.current && nowTime - phoneSinceRef.current > PHONE_ALERT_MS;
+        if (phoneAlert) {
+          triggerPhonePenalty();
+          updateDebugState({
+            phonePenaltyActive: phonePenaltyActiveRef.current,
+            handsDetected,
+            handsUp,
+            hasPhone,
+          });
+          rafRef.current = requestAnimationFrame(detect);
+          return;
+        }
+
         const downAlert =
           lookingDownSinceRef.current &&
           nowTime - lookingDownSinceRef.current > LOOKING_DOWN_ALERT_MS;
@@ -455,9 +563,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           postureBadSinceRef.current &&
           nowTime - postureBadSinceRef.current > POSTURE_ALERT_MS;
 
-        if (phoneAlert) {
-          maybeAlert("Put the phone away.");
-        } else if (downAlert) {
+        if (downAlert) {
           maybeAlert("Stop looking down. Eyes on the screen.");
         } else if (gazeAlert) {
           maybeAlert("Look at the screen. Stay locked in.");
@@ -478,12 +584,43 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           error: "Camera not available.",
           hasFace: false,
           hasPhone: false,
+          handsDetected: 0,
+          handsUp: null,
+          phonePenaltyActive: false,
+          isLookingForward: null,
+          isSittingStraight: null,
+          isLookingDown: null,
+          yaw: null,
+          pitch: null,
+          roll: null,
+          yawDelta: null,
+          pitchDelta: null,
+          rollDelta: null,
+          calibrationFrames: 0,
         });
         return;
       }
 
       try {
-        updateDebugState({ status: "initializing", error: null });
+        updateDebugState({
+          status: "initializing",
+          error: null,
+          hasFace: false,
+          hasPhone: false,
+          handsDetected: 0,
+          handsUp: null,
+          phonePenaltyActive: false,
+          isLookingForward: null,
+          isSittingStraight: null,
+          isLookingDown: null,
+          yaw: null,
+          pitch: null,
+          roll: null,
+          yawDelta: null,
+          pitchDelta: null,
+          rollDelta: null,
+          calibrationFrames: 0,
+        });
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
           audio: false,
@@ -527,7 +664,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           });
         }
 
-        const { FaceLandmarker, ObjectDetector, FilesetResolver } = await import(
+        const { FaceLandmarker, ObjectDetector, HandLandmarker, FilesetResolver } = await import(
           "@mediapipe/tasks-vision"
         );
         const resolver = await FilesetResolver.forVisionTasks(VISION_WASM_PATH);
@@ -546,6 +683,12 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           maxResults: 5,
         });
 
+        handLandmarkerRef.current = await HandLandmarker.createFromOptions(resolver, {
+          baseOptions: { modelAssetPath: HAND_MODEL_PATH },
+          runningMode: "VIDEO",
+          numHands: 2,
+        });
+
         if (cancelled) {
           cleanup();
           return;
@@ -556,6 +699,18 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           status: "calibrating",
           hasFace: false,
           hasPhone: false,
+          handsDetected: 0,
+          handsUp: null,
+          phonePenaltyActive: phonePenaltyActiveRef.current,
+          isLookingForward: null,
+          isSittingStraight: null,
+          isLookingDown: null,
+          yaw: null,
+          pitch: null,
+          roll: null,
+          yawDelta: null,
+          pitchDelta: null,
+          rollDelta: null,
           calibrationFrames: 0,
           error: null,
         });
@@ -567,6 +722,19 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           error: message,
           hasFace: false,
           hasPhone: false,
+          handsDetected: 0,
+          handsUp: null,
+          phonePenaltyActive: false,
+          isLookingForward: null,
+          isSittingStraight: null,
+          isLookingDown: null,
+          yaw: null,
+          pitch: null,
+          roll: null,
+          yawDelta: null,
+          pitchDelta: null,
+          rollDelta: null,
+          calibrationFrames: 0,
         });
         console.warn("Posture monitoring unavailable:", error);
         cleanup();
