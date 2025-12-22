@@ -20,6 +20,40 @@ const PHONE_PENALTY_REPEAT_MS = 6000;
 const PHONE_CLEAR_CONFIRM_MS = 2000;
 const HANDS_UP_WRIST_Y = 0.6;
 
+type AlertType = "down" | "gaze" | "posture";
+
+const ALERT_ORDER: AlertType[] = ["down", "gaze", "posture"];
+
+const ALERT_LINES: Record<AlertType, string[]> = {
+  down: [
+    "Eyes up. The pact demands the screen.",
+    "Lift your gaze. The warden is waiting.",
+    "Look up. Keep your focus bound.",
+  ],
+  gaze: [
+    "Eyes forward. Stay bound.",
+    "Stop roaming. Face the screen.",
+    "Look forward. The pact is watching.",
+  ],
+  posture: [
+    "Sit up straight. Hold your posture.",
+    "Back straight. Do not slouch.",
+    "Stand tall. The pact does not bend.",
+  ],
+};
+
+const PHONE_PENALTY_LINES = [
+  "Cast the phone aside. Hands up where I can see them.",
+  "Phone down. Both hands up.",
+  "Drop the phone. Raise your hands.",
+];
+
+const PHONE_REPEAT_LINES = [
+  "Phone away. Hands up where I can see them.",
+  "Hands up. The phone is still a sin.",
+  "Put it away. Both hands, now.",
+];
+
 const THRESHOLDS = {
   yawAwayDeg: 24,
   pitchAwayDeg: 18,
@@ -212,6 +246,14 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const debugStateRef = useRef<PostureDebugState>(INITIAL_DEBUG_STATE);
   const debugEnabledRef = useRef(Boolean(options.debug));
   const lastDebugUpdateRef = useRef<number>(0);
+  const lastAlertTypeRef = useRef<AlertType | null>(null);
+  const alertLineIndexRef = useRef<Record<AlertType, number>>({
+    down: 0,
+    gaze: 0,
+    posture: 0,
+  });
+  const phonePenaltyLineIndexRef = useRef(0);
+  const phoneRepeatLineIndexRef = useRef(0);
 
   useEffect(() => {
     speakRef.current = speak;
@@ -267,6 +309,10 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       phonePenaltyActiveRef.current = false;
       phonePenaltyLastShoutRef.current = 0;
       phoneClearSinceRef.current = null;
+      lastAlertTypeRef.current = null;
+      alertLineIndexRef.current = { down: 0, gaze: 0, posture: 0 };
+      phonePenaltyLineIndexRef.current = 0;
+      phoneRepeatLineIndexRef.current = 0;
       updateDebugState({ ...INITIAL_DEBUG_STATE, status: "inactive" });
     };
 
@@ -320,11 +366,45 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       }
     };
 
-    const maybeAlert = (message: string) => {
+    const nextAlertLine = (type: AlertType) => {
+      const lines = ALERT_LINES[type];
+      const index = alertLineIndexRef.current[type] % lines.length;
+      alertLineIndexRef.current[type] = (index + 1) % lines.length;
+      return lines[index];
+    };
+
+    const nextPhonePenaltyLine = () => {
+      const index = phonePenaltyLineIndexRef.current % PHONE_PENALTY_LINES.length;
+      phonePenaltyLineIndexRef.current = (index + 1) % PHONE_PENALTY_LINES.length;
+      return PHONE_PENALTY_LINES[index];
+    };
+
+    const nextPhoneRepeatLine = () => {
+      const index = phoneRepeatLineIndexRef.current % PHONE_REPEAT_LINES.length;
+      phoneRepeatLineIndexRef.current = (index + 1) % PHONE_REPEAT_LINES.length;
+      return PHONE_REPEAT_LINES[index];
+    };
+
+    const pickAlertType = (eligible: AlertType[]) => {
+      if (eligible.length === 0) return null;
+      if (eligible.length === 1) return eligible[0];
+      const lastType = lastAlertTypeRef.current;
+      const startIndex = lastType ? (ALERT_ORDER.indexOf(lastType) + 1) % ALERT_ORDER.length : 0;
+      for (let i = 0; i < ALERT_ORDER.length; i += 1) {
+        const type = ALERT_ORDER[(startIndex + i) % ALERT_ORDER.length];
+        if (eligible.includes(type)) {
+          return type;
+        }
+      }
+      return eligible[0];
+    };
+
+    const maybeAlert = (type: AlertType) => {
       const now = Date.now();
       if (now - lastAlertRef.current < ALERT_REPEAT_MS) return;
       lastAlertRef.current = now;
-      speakRef.current(message, true);
+      lastAlertTypeRef.current = type;
+      speakRef.current(nextAlertLine(type), true);
       addDistractionRef.current();
     };
 
@@ -333,7 +413,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       phonePenaltyActiveRef.current = true;
       phonePenaltyLastShoutRef.current = 0;
       phoneClearSinceRef.current = null;
-      speakRef.current("Cast the phone aside. Hands up where I can see them.", true);
+      speakRef.current(nextPhonePenaltyLine(), true);
       addDistractionRef.current();
     };
 
@@ -341,7 +421,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       const now = Date.now();
       if (now - phonePenaltyLastShoutRef.current < PHONE_PENALTY_REPEAT_MS) return;
       phonePenaltyLastShoutRef.current = now;
-      speakRef.current("Phone away. Hands up where I can see them.", true);
+      speakRef.current(nextPhoneRepeatLine(), true);
     };
 
     const startDetection = () => {
@@ -563,12 +643,14 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           postureBadSinceRef.current &&
           nowTime - postureBadSinceRef.current > POSTURE_ALERT_MS;
 
-        if (downAlert) {
-          maybeAlert("Eyes up. The pact demands the screen.");
-        } else if (gazeAlert) {
-          maybeAlert("Eyes forward. Stay bound.");
-        } else if (postureAlert) {
-          maybeAlert("Sit up straight. Hold your posture.");
+        const eligibleAlerts: AlertType[] = [];
+        if (downAlert) eligibleAlerts.push("down");
+        if (gazeAlert) eligibleAlerts.push("gaze");
+        if (postureAlert) eligibleAlerts.push("posture");
+
+        const nextAlert = pickAlertType(eligibleAlerts);
+        if (nextAlert) {
+          maybeAlert(nextAlert);
         }
 
         rafRef.current = requestAnimationFrame(detect);
