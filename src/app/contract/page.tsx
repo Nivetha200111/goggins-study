@@ -163,7 +163,7 @@ export default function ContractPage() {
       <div className="ember ember-2" />
       <div className="ember ember-3" />
       <div className="contract-wrapper">
-        <div className="sigil">
+        <div className={`sigil ${status === "signed" ? "lit" : ""}`}>
           <div className="sigil-horn left" />
           <div className="sigil-horn right" />
           <div className="sigil-core" />
@@ -259,6 +259,17 @@ export default function ContractPage() {
           margin: 0 auto 18px;
           position: relative;
         }
+        .sigil.lit::after {
+          content: "";
+          position: absolute;
+          inset: -8px;
+          border-radius: 24px;
+          background: radial-gradient(circle, rgba(255, 120, 80, 0.6), transparent 70%);
+          filter: blur(6px);
+          opacity: 0.9;
+          animation: sigil-burn 1.4s ease-in-out infinite;
+          pointer-events: none;
+        }
         .sigil-core {
           width: 48px;
           height: 48px;
@@ -267,6 +278,12 @@ export default function ContractPage() {
           margin: 12px auto 0;
           box-shadow: 0 0 40px rgba(255, 80, 70, 0.6);
         }
+        .sigil.lit .sigil-core {
+          box-shadow:
+            0 0 30px rgba(255, 120, 80, 0.8),
+            0 0 70px rgba(255, 80, 70, 0.9);
+          animation: sigil-burn 1.4s ease-in-out infinite;
+        }
         .sigil-horn {
           position: absolute;
           top: 4px;
@@ -274,6 +291,9 @@ export default function ContractPage() {
           height: 24px;
           border-radius: 6px;
           background: linear-gradient(180deg, #ffb24a, #b91c1c);
+        }
+        .sigil.lit .sigil-horn {
+          box-shadow: 0 0 14px rgba(255, 120, 80, 0.6);
         }
         .sigil-horn.left {
           left: 4px;
@@ -461,6 +481,16 @@ export default function ContractPage() {
           right: 20%;
           background: rgba(140, 30, 30, 0.4);
           animation-delay: 4s;
+        }
+        @keyframes sigil-burn {
+          0%, 100% {
+            opacity: 0.85;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.05);
+          }
         }
 
         @media (max-width: 640px) {
