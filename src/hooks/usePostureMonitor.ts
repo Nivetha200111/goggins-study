@@ -18,7 +18,7 @@ const ALERT_REPEAT_MS = 15 * 1000;
 const DEBUG_UPDATE_MS = 500;
 const PHONE_PENALTY_REPEAT_MS = 6000;
 const PHONE_CLEAR_CONFIRM_MS = 2000;
-const HANDS_UP_WRIST_Y = 0.6;
+const HANDS_UP_WRIST_Y = 0.65;
 
 type AlertType = "down" | "gaze" | "posture";
 
@@ -55,15 +55,16 @@ const PHONE_REPEAT_LINES = [
 ];
 
 const THRESHOLDS = {
-  yawAwayDeg: 24,
-  pitchAwayDeg: 18,
-  rollSlouchDeg: 18,
-  pitchSlouchDeg: 18,
-  pitchDownDeg: 20,
-  ratioDownDelta: 0.08,
+  yawAwayDeg: 30,
+  pitchAwayDeg: 22,
+  rollSlouchDeg: 22,
+  pitchSlouchDeg: 22,
+  pitchDownDeg: 18,
+  ratioDownDelta: 0.06,
 };
 
-const PHONE_LABELS = new Set(["cell phone", "phone", "mobile phone", "smartphone"]);
+const PHONE_LABELS = ["cell phone", "phone", "mobile phone", "smartphone", "cellphone", "remote"];
+const PHONE_SCORE_THRESHOLD = 0.35;
 
 type NormalizedLandmark = { x: number; y: number; z: number };
 type FaceLandmarkerResult = {
@@ -199,19 +200,25 @@ function hasPhoneDetection(result: ObjectDetectorResult | null): boolean {
   if (!result?.detections) return false;
   return result.detections.some((detection) =>
     detection.categories?.some((category) => {
-      const label = category.categoryName?.toLowerCase() || "";
+      const label = (category.categoryName || "").toLowerCase().trim();
       const score = category.score ?? 0;
-      return score > 0.5 && PHONE_LABELS.has(label);
+      return score >= PHONE_SCORE_THRESHOLD && PHONE_LABELS.some((p) => label.includes(p) || p.includes(label));
     })
   );
 }
 
 function areHandsUp(landmarks: NormalizedLandmark[][]): boolean {
   if (!landmarks || landmarks.length < 2) return false;
-  const leftWrist = landmarks[0]?.[0];
-  const rightWrist = landmarks[1]?.[0];
-  if (!leftWrist || !rightWrist) return false;
-  return leftWrist.y < HANDS_UP_WRIST_Y && rightWrist.y < HANDS_UP_WRIST_Y;
+  // Check that both detected hands have wrists in upper portion of frame
+  // Wrist is landmark index 0, y < threshold means higher in frame (0 = top, 1 = bottom)
+  let handsUpCount = 0;
+  for (const hand of landmarks) {
+    const wrist = hand?.[0];
+    if (wrist && wrist.y < HANDS_UP_WRIST_Y) {
+      handsUpCount++;
+    }
+  }
+  return handsUpCount >= 2;
 }
 
 export function usePostureMonitor(options: PostureMonitorOptions = {}) {
@@ -336,7 +343,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       handLandmarkerRef.current = null;
 
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
         streamRef.current = null;
       }
 
@@ -546,7 +553,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               Math.abs(rollDelta) < THRESHOLDS.rollSlouchDeg &&
               Math.abs(pitchDelta) < THRESHOLDS.pitchSlouchDeg;
             const isLookingDown =
-              pitchDelta < -THRESHOLDS.pitchDownDeg || ratioDown;
+              Math.abs(pitchDelta) > THRESHOLDS.pitchDownDeg || ratioDown;
 
             updateTimer(gazeAwaySinceRef, !isLookingForward);
             updateTimer(postureBadSinceRef, !isSittingStraight);
@@ -708,7 +715,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           audio: false,
         });
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+          stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
           return;
         }
 
@@ -761,8 +768,8 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
         objectDetectorRef.current = await ObjectDetector.createFromOptions(resolver, {
           baseOptions: { modelAssetPath: OBJECT_MODEL_PATH },
           runningMode: "VIDEO",
-          scoreThreshold: 0.5,
-          maxResults: 5,
+          scoreThreshold: 0.3,
+          maxResults: 10,
         });
 
         handLandmarkerRef.current = await HandLandmarker.createFromOptions(resolver, {
