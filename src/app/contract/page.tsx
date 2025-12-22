@@ -164,6 +164,11 @@ export default function ContractPage() {
       <div className="ember ember-3" />
       <div className="contract-wrapper">
         <div className={`sigil ${status === "signed" ? "lit" : ""}`}>
+          <svg className="sigil-mark" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" />
+            <circle cx="60" cy="60" r="30" />
+            <path d="M60 18 L72 42 L98 44 L78 62 L84 88 L60 74 L36 88 L42 62 L22 44 L48 42 Z" />
+          </svg>
           <div className="sigil-horn left" />
           <div className="sigil-horn right" />
           <div className="sigil-core" />
@@ -254,10 +259,21 @@ export default function ContractPage() {
           z-index: 2;
         }
         .sigil {
-          width: 70px;
-          height: 70px;
+          width: 86px;
+          height: 86px;
           margin: 0 auto 18px;
           position: relative;
+          display: grid;
+          place-items: center;
+          z-index: 3;
+        }
+        .sigil-mark {
+          position: absolute;
+          inset: 6px;
+          fill: none;
+          stroke: rgba(90, 30, 20, 0.85);
+          stroke-width: 2.4;
+          opacity: 0.9;
         }
         .sigil.lit::after {
           content: "";
@@ -277,11 +293,18 @@ export default function ContractPage() {
           background: radial-gradient(circle, #ff6b4a 0%, #7f1d1d 70%);
           margin: 12px auto 0;
           box-shadow: 0 0 40px rgba(255, 80, 70, 0.6);
+          position: relative;
+          z-index: 2;
         }
         .sigil.lit .sigil-core {
           box-shadow:
             0 0 30px rgba(255, 120, 80, 0.8),
             0 0 70px rgba(255, 80, 70, 0.9);
+          animation: sigil-burn 1.4s ease-in-out infinite;
+        }
+        .sigil.lit .sigil-mark {
+          stroke: rgba(255, 120, 80, 0.95);
+          filter: drop-shadow(0 0 8px rgba(255, 100, 70, 0.8));
           animation: sigil-burn 1.4s ease-in-out infinite;
         }
         .sigil-horn {
@@ -291,6 +314,7 @@ export default function ContractPage() {
           height: 24px;
           border-radius: 6px;
           background: linear-gradient(180deg, #ffb24a, #b91c1c);
+          z-index: 2;
         }
         .sigil.lit .sigil-horn {
           box-shadow: 0 0 14px rgba(255, 120, 80, 0.6);
