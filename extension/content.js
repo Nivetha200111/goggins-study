@@ -85,17 +85,16 @@ function updateMascot(mood, isActive) {
   }
 }
 
-function speak(mood) {
-  if (!mascot) return;
+function showSpeech(message, yell = false) {
+  if (!mascot) createMascot();
 
   const speech = mascot.querySelector(".fc-speech");
-  const messages = DIALOGUES[mood];
-  const message = messages[Math.floor(Math.random() * messages.length)];
+  if (!speech) return;
 
   speech.textContent = message;
   speech.classList.add("visible");
 
-  if (mood === "angry" || mood === "demon") {
+  if (yell) {
     speakAloud(message, true);
   }
 
@@ -103,6 +102,12 @@ function speak(mood) {
   speechTimeout = setTimeout(() => {
     speech.classList.remove("visible");
   }, 4000);
+}
+
+function speak(mood) {
+  const messages = DIALOGUES[mood];
+  const message = messages[Math.floor(Math.random() * messages.length)];
+  showSpeech(message, mood === "angry" || mood === "demon");
 }
 
 function speakAloud(text, yell = false) {
@@ -159,6 +164,9 @@ function showApologyPrompt() {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "MOOD_UPDATE") {
     updateMascot(message.mood, message.sessionActive);
+  }
+  if (message.type === "SHOUT") {
+    showSpeech(message.message || "Wrong tab. Get back to work.", true);
   }
 });
 

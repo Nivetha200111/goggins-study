@@ -51,12 +51,17 @@ const BLOCKED_DOMAINS = [
   "imgur.com",
 ];
 
+const SHOUT_MESSAGE = "Wrong tab. Get back to work.";
+const SHOUT_COOLDOWN_MS = 5000;
+
 let sessionActive = false;
 let currentMood = "happy";
 let distractionCount = 0;
 let moodTimer = null;
 let whitelist = DEFAULT_WHITELIST;
 let userId = null;
+let lastShoutAt = 0;
+let lastShoutTabId = null;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
@@ -101,6 +106,17 @@ function isWhitelisted(url, title) {
 function isBlocked(url) {
   const domain = getDomain(url);
   return BLOCKED_DOMAINS.some((d) => domain.includes(d));
+}
+
+function maybeShout(tab) {
+  if (!tab?.id) return;
+  const now = Date.now();
+  if (now - lastShoutAt < SHOUT_COOLDOWN_MS && lastShoutTabId === tab.id) {
+    return;
+  }
+  lastShoutAt = now;
+  lastShoutTabId = tab.id;
+  chrome.tabs.sendMessage(tab.id, { type: "SHOUT", message: SHOUT_MESSAGE }).catch(() => {});
 }
 
 function escalateMood() {
@@ -169,6 +185,7 @@ function checkTab(tab) {
   if (isWhitelisted(tab.url, tab.title)) {
     resetMood();
   } else {
+    maybeShout(tab);
     if (currentMood === "happy") {
       escalateMood();
     }
