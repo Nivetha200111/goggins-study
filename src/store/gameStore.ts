@@ -51,6 +51,7 @@ interface GameState {
   lastActivityTime: number;
   isDemonModeEnabled: boolean;
   isMonitoringEnabled: boolean;
+  isPostureMonitoringEnabled: boolean;
   isSoundEnabled: boolean;
   userId: string | null;
   isLoading: boolean;
@@ -58,6 +59,7 @@ interface GameState {
   setMood: (mood: Mood) => void;
   toggleDemonMode: () => void;
   toggleMonitoring: () => void;
+  togglePostureMonitoring: () => void;
   toggleSound: () => void;
   startSession: () => void;
   endSession: () => void;
@@ -117,6 +119,7 @@ export const useGameStore = create<GameState>()(
       lastActivityTime: Date.now(),
       isDemonModeEnabled: true,
       isMonitoringEnabled: true,
+      isPostureMonitoringEnabled: false,
       isSoundEnabled: true,
       userId: null,
       isLoading: false,
@@ -128,6 +131,9 @@ export const useGameStore = create<GameState>()(
 
       toggleMonitoring: () =>
         set((state) => ({ isMonitoringEnabled: !state.isMonitoringEnabled })),
+
+      togglePostureMonitoring: () =>
+        set((state) => ({ isPostureMonitoringEnabled: !state.isPostureMonitoringEnabled })),
 
       toggleSound: () =>
         set((state) => ({ isSoundEnabled: !state.isSoundEnabled })),
@@ -414,6 +420,7 @@ export const useGameStore = create<GameState>()(
       partialize: (state) => ({
         isDemonModeEnabled: state.isDemonModeEnabled,
         isMonitoringEnabled: state.isMonitoringEnabled,
+        isPostureMonitoringEnabled: state.isPostureMonitoringEnabled,
         isSoundEnabled: state.isSoundEnabled,
         notesByTab: state.notesByTab,
         whitelist: state.whitelist,

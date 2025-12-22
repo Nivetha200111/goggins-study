@@ -7,6 +7,7 @@ import { useGameStore } from "@/store/gameStore";
 import { Companion } from "@/components/Companion/Companion";
 import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
+import { PostureMonitor } from "@/components/PostureMonitor/PostureMonitor";
 
 interface User {
   id: string;
@@ -160,6 +161,7 @@ export default function Home() {
                 <li>Select a subject to focus on</li>
                 <li>Start your session</li>
                 <li>Your companion watches you</li>
+                <li>Slouching or looking away too long triggers a warning</li>
                 <li>Leave the tab = face the demon</li>
                 <li>Stay focused = earn XP!</li>
               </ul>
@@ -239,6 +241,7 @@ export default function Home() {
       </main>
 
       <Companion />
+      <PostureMonitor />
       <DemonOverlay />
 
       <style jsx>{`

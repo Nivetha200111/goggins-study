@@ -11,6 +11,8 @@ export default function SettingsPage() {
     toggleDemonMode,
     isMonitoringEnabled,
     toggleMonitoring,
+    isPostureMonitoringEnabled,
+    togglePostureMonitoring,
     isSoundEnabled,
     toggleSound,
     whitelist,
@@ -79,6 +81,30 @@ export default function SettingsPage() {
             <span className="slider"></span>
           </label>
         </div>
+      </section>
+
+      <section className="settings-card">
+        <h2>Posture Monitoring</h2>
+        <p className="settings-help">
+          Uses your camera to spot slouching, looking away, looking down, or a phone in hand.
+        </p>
+        <div className="toggle-row">
+          <label className="toggle-label" htmlFor="posture-toggle">
+            Enable Posture Monitoring
+          </label>
+          <label className="switch">
+            <input
+              type="checkbox"
+              id="posture-toggle"
+              checked={isPostureMonitoringEnabled}
+              onChange={togglePostureMonitoring}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
+        <p className="settings-help">
+          Camera access is only used on-device for real-time checks.
+        </p>
       </section>
 
       <section className="settings-card">
@@ -203,6 +229,7 @@ export default function SettingsPage() {
         <h2>How It Works</h2>
         <ul className="info-list">
           <li><strong>Activity Monitoring:</strong> Detects when you stop moving your mouse or typing</li>
+          <li><strong>Posture Monitoring:</strong> On-device checks for slouching, looking away, looking down, or phone use</li>
           <li><strong>Tab Detection:</strong> Knows when you leave the study tab</li>
           <li><strong>Voice Alerts:</strong> Uses browser speech synthesis to shout at you</li>
           <li><strong>Pop Out:</strong> Opens a floating window that stays visible across apps (Chrome 116+)</li>
@@ -215,6 +242,7 @@ export default function SettingsPage() {
         <ul className="info-list">
           <li>All data is stored locally in your browser</li>
           <li>No data is sent to any server</li>
+          <li>Camera frames are processed locally and never saved</li>
           <li>Your study sessions are private</li>
         </ul>
       </section>
