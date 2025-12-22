@@ -18,6 +18,7 @@ export interface UserProfile {
   id: string;
   username: string;
   invite_code: string | null;
+  contract_signed_at: string | null;
   total_xp: number;
   level: number;
   streak: number;
@@ -112,8 +113,16 @@ export async function getUserByUsername(username: string): Promise<UserProfile |
   return data || null;
 }
 
-export async function updateUser(userId: string, updates: Partial<UserProfile>): Promise<void> {
-  await supabase.from("users").update(updates).eq("id", userId);
+export async function updateUser(
+  userId: string,
+  updates: Partial<UserProfile>
+): Promise<boolean> {
+  const { error } = await supabase.from("users").update(updates).eq("id", userId);
+  if (error) {
+    console.error("Error updating user:", error);
+    return false;
+  }
+  return true;
 }
 
 export async function getUserWhitelist(userId: string): Promise<Whitelist> {

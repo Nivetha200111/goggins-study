@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT NOT NULL,
   invite_code TEXT,
+  contract_signed_at TIMESTAMPTZ,
   total_xp INTEGER DEFAULT 0,
   level INTEGER DEFAULT 1,
   streak INTEGER DEFAULT 0,
@@ -17,6 +18,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_idx ON users (lower(usern
 CREATE UNIQUE INDEX IF NOT EXISTS users_invite_code_lower_idx
   ON users (lower(invite_code))
   WHERE invite_code IS NOT NULL;
+
+-- Ensure existing tables get the contract column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_signed_at TIMESTAMPTZ;
 
 -- Invite codes table
 CREATE TABLE IF NOT EXISTS invite_codes (

@@ -112,7 +112,7 @@ export default function SettingsPage() {
         </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="posture-debug-toggle">
-            Show Debug Overlay
+            Show Focus Popout
           </label>
           <label className="switch">
             <input
@@ -125,7 +125,7 @@ export default function SettingsPage() {
           </label>
         </div>
         <p className="settings-help">
-          Shows a small camera preview with live posture status.
+          Shows a floating mascot and camera preview with live posture status.
         </p>
       </section>
 

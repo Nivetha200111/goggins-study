@@ -8,6 +8,7 @@ import { Companion } from "@/components/Companion/Companion";
 import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
 import { PostureMonitor } from "@/components/PostureMonitor/PostureMonitor";
+import { getUser } from "@/lib/supabase";
 
 interface User {
   id: string;
@@ -37,15 +38,36 @@ export default function Home() {
   } = useGameStore();
 
   useEffect(() => {
-    const stored = localStorage.getItem("focus-companion-user");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setUser(parsed);
-      loadUserData(parsed.id);
-    } else {
-      router.push("/login");
-    }
-    setLoading(false);
+    let isMounted = true;
+    const bootstrap = async () => {
+      const stored = localStorage.getItem("focus-companion-user");
+      if (!stored) {
+        router.push("/login");
+        if (isMounted) setLoading(false);
+        return;
+      }
+      const parsed = JSON.parse(stored) as User;
+      const profile = await getUser(parsed.id);
+      if (!profile) {
+        router.push("/login");
+        if (isMounted) setLoading(false);
+        return;
+      }
+      if (!profile.contract_signed_at) {
+        router.push("/contract");
+        if (isMounted) setLoading(false);
+        return;
+      }
+      if (isMounted) {
+        setUser(parsed);
+      }
+      await loadUserData(parsed.id);
+      if (isMounted) setLoading(false);
+    };
+    void bootstrap();
+    return () => {
+      isMounted = false;
+    };
   }, [router, loadUserData]);
 
   useEffect(() => {

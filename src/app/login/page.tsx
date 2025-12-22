@@ -52,7 +52,12 @@ export default function LoginPage() {
             setLoading(false);
             return;
           }
-          await updateUser(existingUser.id, { invite_code: trimmedCode });
+          const updated = await updateUser(existingUser.id, { invite_code: trimmedCode });
+          if (!updated) {
+            setError("Could not claim invite code. Try again.");
+            setLoading(false);
+            return;
+          }
         } else if (existingUser.invite_code.toUpperCase() !== trimmedCode) {
           setError("Incorrect invite code.");
           setLoading(false);
@@ -66,7 +71,7 @@ export default function LoginPage() {
             username: existingUser.username,
           })
         );
-        router.push("/");
+        router.push(existingUser.contract_signed_at ? "/" : "/contract");
         return;
       }
 
@@ -88,7 +93,7 @@ export default function LoginPage() {
               username: fallbackUser.username,
             })
           );
-          router.push("/");
+          router.push(fallbackUser.contract_signed_at ? "/" : "/contract");
           return;
         }
         setError("Username already exists or could not create account.");
@@ -104,7 +109,7 @@ export default function LoginPage() {
         })
       );
 
-      router.push("/");
+      router.push("/contract");
     } catch {
       setError("Something went wrong. Try again.");
       setLoading(false);
