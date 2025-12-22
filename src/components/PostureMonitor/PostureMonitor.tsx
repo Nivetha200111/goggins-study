@@ -64,8 +64,8 @@ export function PostureMonitor() {
   const handsLabel = debug ? String(debug.handsDetected) : "--";
   const handsUpLabel =
     debug?.handsUp === null ? "--" : debug?.handsUp ? "Yes" : "No";
-  const phonePenaltyLabel = debug?.phonePenaltyActive ? "Active" : "Clear";
-  const moodLabel = mood === "demon" ? "DEMON" : mood.toUpperCase();
+  const phonePenaltyLabel = debug?.phonePenaltyActive ? "Cursed" : "Clear";
+  const moodLabel = mood === "demon" ? "INFERNAL" : mood.toUpperCase();
   const calibrationLabel =
     debug?.status === "calibrating"
       ? `Calibrating ${debug.calibrationFrames}/${debug.calibrationTarget}`
@@ -74,7 +74,7 @@ export function PostureMonitor() {
   return (
     <div className={`posture-debug ${isMinimized ? "minimized" : ""}`}>
       <div className="posture-header">
-        <span>Focus Popout</span>
+        <span>Infernal Popout</span>
         <button type="button" onClick={() => setIsMinimized((prev) => !prev)}>
           {isMinimized ? "Expand" : "Minimize"}
         </button>
@@ -116,7 +116,7 @@ export function PostureMonitor() {
             <div className={`mood-pill ${mood}`}>{moodLabel}</div>
             <div className={`status ${status}`}>{statusLabel}</div>
             {debug?.phonePenaltyActive ? (
-              <div className="posture-mini-warning">Phone lock</div>
+              <div className="posture-mini-warning">Phone ban</div>
             ) : (
               <div className="posture-mini-ok">Phone clear</div>
             )}
@@ -228,7 +228,9 @@ export function PostureMonitor() {
           </div>
           {calibrationLabel ? <div className="posture-note">{calibrationLabel}</div> : null}
           {debug?.phonePenaltyActive ? (
-            <div className="posture-warning">Phone lock: put it away and raise both hands.</div>
+            <div className="posture-warning">
+              Phone ban: cast it aside and raise both hands.
+            </div>
           ) : null}
           {debug?.error ? <div className="posture-error">{debug.error}</div> : null}
         </>
@@ -239,13 +241,13 @@ export function PostureMonitor() {
           right: 18px;
           bottom: 18px;
           width: 300px;
-          background: rgba(255, 255, 255, 0.95);
-          border: 1px solid #e5e7eb;
+          background: rgba(16, 9, 10, 0.95);
+          border: 1px solid var(--edge);
           border-radius: 14px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
           z-index: 9999;
           font-size: 0.75rem;
-          color: #1a1d2f;
+          color: var(--foreground);
           backdrop-filter: blur(6px);
         }
         .posture-debug.minimized {
@@ -256,15 +258,16 @@ export function PostureMonitor() {
           align-items: center;
           justify-content: space-between;
           padding: 10px 12px;
-          border-bottom: 1px solid #eef2f7;
+          border-bottom: 1px solid var(--edge);
           font-weight: 700;
         }
         .posture-header button {
           border: none;
-          background: #f3f4f6;
+          background: #2a1516;
           border-radius: 999px;
           padding: 4px 10px;
           font-size: 0.7rem;
+          color: var(--foreground);
           cursor: pointer;
         }
         .posture-mini {
@@ -280,11 +283,11 @@ export function PostureMonitor() {
           font-size: 0.75rem;
         }
         .posture-mini-warning {
-          color: #b45309;
+          color: #f97316;
           font-weight: 700;
         }
         .posture-mini-ok {
-          color: #16a34a;
+          color: #facc15;
           font-weight: 700;
         }
         .posture-body {
@@ -316,22 +319,22 @@ export function PostureMonitor() {
         .posture-mascot-meta {
           display: grid;
           gap: 4px;
-          color: #475569;
+          color: var(--muted);
           font-size: 0.7rem;
         }
         .posture-mascot-meta .lock {
-          color: #dc2626;
+          color: var(--accent);
           font-weight: 700;
         }
         .posture-mascot-meta .clear {
-          color: #16a34a;
+          color: #facc15;
           font-weight: 700;
         }
         .posture-video {
           width: 100%;
           border-radius: 10px;
           overflow: hidden;
-          background: #0f172a;
+          background: #050406;
           aspect-ratio: 4 / 3;
         }
         .posture-video video {
@@ -345,7 +348,7 @@ export function PostureMonitor() {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #cbd5f5;
+          color: rgba(247, 231, 214, 0.7);
           font-weight: 600;
         }
         .posture-stats {
@@ -363,10 +366,10 @@ export function PostureMonitor() {
           grid-template-columns: repeat(6, auto);
           gap: 6px;
           font-size: 0.7rem;
-          color: #334155;
+          color: var(--muted);
         }
         .stat span {
-          color: #64748b;
+          color: var(--muted);
         }
         .mood-pill {
           display: inline-flex;
@@ -378,30 +381,30 @@ export function PostureMonitor() {
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          background: #e2e8f0;
-          color: #0f172a;
+          background: #2a1516;
+          color: var(--foreground);
         }
         .mood-pill.happy {
-          background: #bbf7d0;
-          color: #166534;
+          background: #fef08a;
+          color: #854d0e;
         }
         .mood-pill.suspicious {
-          background: #fde68a;
-          color: #92400e;
+          background: #fdba74;
+          color: #9a3412;
         }
         .mood-pill.angry {
           background: #fecaca;
-          color: #b91c1c;
+          color: #991b1b;
         }
         .mood-pill.demon {
-          background: #1f2937;
+          background: #1a0f10;
           color: #f87171;
         }
         .status.tracking {
-          color: #16a34a;
+          color: #facc15;
         }
         .status.calibrating {
-          color: #2563eb;
+          color: #f97316;
         }
         .status.no-face,
         .status.initializing {
@@ -412,20 +415,20 @@ export function PostureMonitor() {
         }
         .posture-note {
           padding: 8px 12px;
-          border-top: 1px solid #eef2f7;
-          color: #2563eb;
+          border-top: 1px solid var(--edge);
+          color: #f97316;
           font-weight: 600;
         }
         .posture-error {
           padding: 8px 12px;
-          border-top: 1px solid #fee2e2;
+          border-top: 1px solid #3a0f12;
           color: #dc2626;
           font-weight: 600;
         }
         .posture-warning {
           padding: 8px 12px;
-          border-top: 1px solid #fde68a;
-          color: #92400e;
+          border-top: 1px solid #3a1a0d;
+          color: #f59e0b;
           font-weight: 600;
         }
       `}</style>

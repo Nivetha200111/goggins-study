@@ -82,7 +82,7 @@ interface GameState {
   syncToCloud: () => Promise<void>;
 }
 
-const COLORS = ["#ff6b4a", "#4a9fff", "#4aff6b", "#ff4af0", "#ffd24a", "#4afff0"];
+const COLORS = ["#dc2626", "#f97316", "#f59e0b", "#ea580c", "#9f1239", "#b91c1c"];
 
 function getToday(): string {
   return new Date().toISOString().split("T")[0];

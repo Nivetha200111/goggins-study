@@ -94,7 +94,7 @@ export default function Home() {
     return (
       <div className="loading-screen">
         <div className="loading-eye" />
-        <p>Loading...</p>
+        <p>Summoning...</p>
         <style jsx>{`
           .loading-screen {
             display: flex;
@@ -107,7 +107,7 @@ export default function Home() {
           .loading-eye {
             width: 60px;
             height: 60px;
-            background: radial-gradient(circle, #fff 0%, #667eea 100%);
+            background: radial-gradient(circle, #ffedd5 0%, #e11d48 100%);
             border-radius: 50%;
             margin-bottom: 16px;
             animation: pulse 1.5s ease-in-out infinite;
@@ -133,9 +133,9 @@ export default function Home() {
         <header className="app-header">
           <div className="header-left">
             <p className="app-subtitle">Welcome back, {user.username}</p>
-            <h1 className="app-title">Focus Companion</h1>
+            <h1 className="app-title">Infernal Companion</h1>
             <p className="app-description">
-              Your robotic friend watches over you. Drift away, and face the consequences.
+              Your infernal warden watches. Drift away and the pact bites back.
             </p>
           </div>
 
@@ -178,14 +178,14 @@ export default function Home() {
             <TabSelector />
 
             <div className="tips-card">
-              <h3>How it works</h3>
+              <h3>Ritual Steps</h3>
               <ul>
-                <li>Select a subject to focus on</li>
+                <li>Select a subject to pledge</li>
                 <li>Start your session</li>
-                <li>Your companion watches you</li>
-                <li>Slouching or looking away too long triggers a warning</li>
+                <li>The warden watches</li>
+                <li>Slouching or looking away too long draws wrath</li>
                 <li>Leave the tab = face the demon</li>
-                <li>Stay focused = earn XP!</li>
+                <li>Stay focused = earn XP</li>
               </ul>
             </div>
           </div>
@@ -221,8 +221,8 @@ export default function Home() {
                 }}
                 placeholder={
                   isSessionActive
-                    ? "Take notes here while you study... Your companion is watching!"
-                    : "Start a session to begin taking notes..."
+                    ? "Etch your notes here... the pact is watching."
+                    : "Start a session to open the grimoire..."
                 }
                 disabled={!isSessionActive || !activeTabId}
               />
@@ -250,12 +250,12 @@ export default function Home() {
             </div>
 
             <div className="mood-indicator">
-              <p className="mood-label">Companion Mood</p>
+              <p className="mood-label">Warden Mood</p>
               <div className={`mood-display ${mood}`}>
-                {mood === "happy" && "Happy"}
-                {mood === "suspicious" && "Suspicious..."}
-                {mood === "angry" && "ANGRY!"}
-                {mood === "demon" && "DEMON MODE"}
+                {mood === "happy" && "Compliant"}
+                {mood === "suspicious" && "Watching"}
+                {mood === "angry" && "Wrath"}
+                {mood === "demon" && "INFERNAL"}
               </div>
             </div>
           </div>
@@ -272,6 +272,7 @@ export default function Home() {
           min-height: 100vh;
           overflow: hidden;
           padding: 32px;
+          color: var(--foreground);
         }
         .bg-orb {
           position: absolute;
@@ -282,7 +283,7 @@ export default function Home() {
         .orb-1 {
           width: 300px;
           height: 300px;
-          background: rgba(255, 107, 74, 0.3);
+          background: rgba(255, 90, 70, 0.32);
           top: -100px;
           left: -100px;
           animation: floaty 12s ease-in-out infinite;
@@ -290,7 +291,7 @@ export default function Home() {
         .orb-2 {
           width: 400px;
           height: 400px;
-          background: rgba(102, 126, 234, 0.2);
+          background: rgba(120, 16, 20, 0.35);
           top: 50%;
           right: -150px;
           animation: floaty 15s ease-in-out infinite reverse;
@@ -298,7 +299,7 @@ export default function Home() {
         .orb-3 {
           width: 250px;
           height: 250px;
-          background: rgba(255, 210, 74, 0.25);
+          background: rgba(255, 176, 97, 0.2);
           bottom: -80px;
           left: 30%;
           animation: floaty 10s ease-in-out infinite;
@@ -332,9 +333,10 @@ export default function Home() {
         .app-title {
           font-size: 3rem;
           font-weight: 700;
-          color: var(--ink);
+          color: var(--foreground);
           margin: 0;
           line-height: 1.1;
+          text-shadow: 0 10px 30px rgba(225, 29, 72, 0.35);
         }
         .app-description {
           font-size: 1rem;
@@ -362,7 +364,7 @@ export default function Home() {
           display: block;
           font-size: 1.5rem;
           font-weight: 700;
-          color: var(--ink);
+          color: var(--foreground);
         }
         .stat-value.streak { color: var(--accent); }
         .header-actions {
@@ -373,13 +375,17 @@ export default function Home() {
         .ghost-btn {
           padding: 10px 18px;
           border-radius: 999px;
-          border: 2px solid var(--ink);
-          color: var(--ink);
-          background: transparent;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: var(--foreground);
+          background: rgba(10, 5, 6, 0.4);
           text-decoration: none;
           font-weight: 600;
           font-size: 0.85rem;
           cursor: pointer;
+        }
+        .ghost-btn:hover {
+          border-color: rgba(225, 29, 72, 0.6);
+          background: rgba(225, 29, 72, 0.2);
         }
         .session-btn {
           padding: 14px 32px;
@@ -396,10 +402,10 @@ export default function Home() {
         }
         .session-btn:hover:not(:disabled) {
           transform: translateY(-3px);
-          box-shadow: 0 8px 24px rgba(255, 107, 74, 0.4);
+          box-shadow: 0 8px 24px var(--glow);
         }
         .session-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .session-btn.active { background: var(--ink); }
+        .session-btn.active { background: var(--accent-deep); }
         .content-grid {
           display: grid;
           grid-template-columns: 1fr 1.5fr;
@@ -414,10 +420,11 @@ export default function Home() {
           gap: 24px;
         }
         .tips-card {
-          background: white;
+          background: var(--card);
           border-radius: 20px;
           padding: 20px 24px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+          border: 1px solid var(--edge);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
         }
         .tips-card h3 {
           font-size: 0.875rem;
@@ -431,14 +438,15 @@ export default function Home() {
           margin: 0;
           padding: 0 0 0 20px;
           font-size: 0.875rem;
-          color: var(--ink);
+          color: var(--foreground);
         }
         .tips-card li { margin-bottom: 6px; }
         .focus-area {
-          background: white;
+          background: var(--card);
           border-radius: 24px;
           padding: 28px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+          border: 1px solid var(--edge);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
         }
         .focus-header {
           display: flex;
@@ -457,7 +465,7 @@ export default function Home() {
         .focus-subject {
           font-size: 1.75rem;
           font-weight: 700;
-          color: var(--ink);
+          color: var(--foreground);
           margin: 0;
         }
         .session-indicator {
@@ -466,7 +474,8 @@ export default function Home() {
           font-weight: 700;
           letter-spacing: 1px;
           color: var(--muted);
-          background: #f1f1f1;
+          background: #1f1415;
+          border: 1px solid var(--edge);
           border-radius: 20px;
           transition: all 0.3s ease;
         }
@@ -484,9 +493,9 @@ export default function Home() {
           padding: 16px;
           font-size: 0.95rem;
           font-family: inherit;
-          color: var(--ink);
-          background: var(--background);
-          border: 2px solid transparent;
+          color: var(--foreground);
+          background: var(--card-muted);
+          border: 1px solid var(--edge);
           border-radius: 16px;
           resize: vertical;
           outline: none;
@@ -494,26 +503,30 @@ export default function Home() {
         }
         .notes-area:focus { border-color: var(--accent); }
         .notes-area:disabled { opacity: 0.6; cursor: not-allowed; }
+        .notes-area::placeholder {
+          color: rgba(247, 231, 214, 0.55);
+        }
         .focus-stats {
           display: flex;
           justify-content: space-around;
           margin-top: 20px;
           padding-top: 20px;
-          border-top: 1px solid #eee;
+          border-top: 1px solid var(--edge);
         }
         .focus-stat { text-align: center; }
         .focus-stat-value {
           display: block;
           font-size: 2rem;
           font-weight: 700;
-          color: var(--ink);
+          color: var(--foreground);
         }
-        .focus-stat-value.danger { color: #dc2626; }
+        .focus-stat-value.danger { color: var(--accent); }
         .focus-stat-label { font-size: 0.75rem; color: var(--muted); }
         .mood-indicator {
           margin-top: 24px;
           padding: 20px;
-          background: var(--ink);
+          background: #120b0c;
+          border: 1px solid var(--edge);
           border-radius: 16px;
           text-align: center;
         }
@@ -531,10 +544,10 @@ export default function Home() {
           color: white;
           transition: all 0.3s ease;
         }
-        .mood-display.happy { color: #4ade80; }
-        .mood-display.suspicious { color: #fbbf24; }
+        .mood-display.happy { color: #facc15; }
+        .mood-display.suspicious { color: #f97316; }
         .mood-display.angry { color: #f87171; animation: shake 0.3s ease-in-out infinite; }
-        .mood-display.demon { color: #dc2626; text-transform: uppercase; letter-spacing: 4px; }
+        .mood-display.demon { color: var(--accent); text-transform: uppercase; letter-spacing: 4px; }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-3px); }

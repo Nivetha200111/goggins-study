@@ -53,21 +53,21 @@ export default function SettingsPage() {
     <div className="settings-page">
       <header className="settings-header">
         <div>
-          <p className="settings-kicker">Focus Companion</p>
-          <h1>Settings</h1>
+          <p className="settings-kicker">Infernal Companion</p>
+          <h1>Ritual Settings</h1>
           <p className="settings-subtitle">
-            Configure monitoring, sounds, and demon mode behavior.
+            Tune monitoring, voices, and demon mode behavior.
           </p>
         </div>
         <Link href="/" className="back-link">
-          Back to dashboard
+          Back to the ritual
         </Link>
       </header>
 
       <section className="settings-card">
         <h2>Monitoring</h2>
         <p className="settings-help">
-          When enabled, the companion monitors your activity and gets upset when you stop.
+          When bound, the companion watches your activity and tightens its grip when you stop.
         </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="monitoring-toggle">
@@ -88,7 +88,7 @@ export default function SettingsPage() {
       <section className="settings-card">
         <h2>Posture Monitoring</h2>
         <p className="settings-help">
-          Uses your camera to spot slouching, looking away, looking down, or a phone in hand.
+          Uses your camera to spot slouching, wandering eyes, or a phone in hand.
         </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="posture-toggle">
@@ -112,7 +112,7 @@ export default function SettingsPage() {
         </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="posture-debug-toggle">
-            Show Focus Popout
+            Show Infernal Popout
           </label>
           <label className="switch">
             <input
@@ -125,14 +125,14 @@ export default function SettingsPage() {
           </label>
         </div>
         <p className="settings-help">
-          Shows a floating mascot and camera preview with live posture status.
+          Shows a floating warden and camera preview with live posture status.
         </p>
       </section>
 
       <section className="settings-card">
         <h2>Voice Alerts</h2>
         <p className="settings-help">
-          When enabled, the mascot will shout at you if you get distracted.
+          When enabled, the warden will roar when you drift.
         </p>
         <div className="toggle-row">
           <label className="toggle-label" htmlFor="sound-toggle">
@@ -153,7 +153,7 @@ export default function SettingsPage() {
       <section className="settings-card">
         <h2>Whitelist Sites</h2>
         <p className="settings-help">
-          Domains that appear in your notes count as on-topic and avoid demon mode.
+          Domains etched in your notes count as on-topic and avoid demon mode.
         </p>
         <form onSubmit={handleAddDomain} className="whitelist-form">
           <input
@@ -255,7 +255,7 @@ export default function SettingsPage() {
           <li><strong>Tab Detection:</strong> Knows when you leave the study tab</li>
           <li><strong>Voice Alerts:</strong> Uses browser speech synthesis to shout at you</li>
           <li><strong>Pop Out:</strong> Opens a floating window that stays visible across apps (Chrome 116+)</li>
-          <li><strong>Demon Mode:</strong> Full-screen lockout requiring you to type &quot;i will focus&quot;</li>
+          <li><strong>Demon Mode:</strong> Full-screen lockout requiring you to type &quot;i will focus&quot; to be released</li>
         </ul>
       </section>
 
@@ -273,7 +273,7 @@ export default function SettingsPage() {
         .settings-page {
           min-height: 100vh;
           padding: 32px;
-          background: var(--background);
+          background: transparent;
           color: var(--foreground);
           max-width: 800px;
           margin: 0 auto;
@@ -298,7 +298,7 @@ export default function SettingsPage() {
         h1 {
           font-size: 2.5rem;
           margin: 8px 0;
-          color: var(--ink);
+          color: var(--foreground);
         }
 
         .settings-subtitle {
@@ -310,29 +310,31 @@ export default function SettingsPage() {
         .back-link {
           padding: 10px 18px;
           border-radius: 999px;
-          border: 2px solid var(--ink);
-          color: var(--ink);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: var(--foreground);
           text-decoration: none;
           font-weight: 600;
           font-size: 0.875rem;
           white-space: nowrap;
+          background: rgba(10, 5, 6, 0.4);
         }
 
         .settings-card {
-          background: white;
+          background: var(--card);
           border-radius: 20px;
           padding: 24px;
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+          border: 1px solid var(--edge);
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
           margin-bottom: 20px;
         }
 
         .info-card {
-          background: #f8f4eb;
+          background: #120a0b;
         }
 
         .settings-card h2 {
           margin: 0 0 8px;
-          color: var(--ink);
+          color: var(--foreground);
           font-size: 1.25rem;
         }
 
@@ -358,14 +360,18 @@ export default function SettingsPage() {
           flex: 1;
           padding: 12px 16px;
           border-radius: 12px;
-          border: 2px solid transparent;
-          background: #f8f4eb;
+          border: 1px solid var(--edge);
+          background: #120b0c;
           font-size: 0.95rem;
+          color: var(--foreground);
           outline: none;
         }
 
         .whitelist-input:focus {
           border-color: var(--accent);
+        }
+        .whitelist-input::placeholder {
+          color: rgba(247, 231, 214, 0.55);
         }
 
         .whitelist-add {
@@ -376,6 +382,7 @@ export default function SettingsPage() {
           color: white;
           font-weight: 600;
           cursor: pointer;
+          box-shadow: 0 10px 20px rgba(225, 29, 72, 0.35);
         }
 
         .whitelist-tags {
@@ -389,8 +396,8 @@ export default function SettingsPage() {
           padding: 6px 12px;
           border-radius: 999px;
           border: none;
-          background: #1a1d2f;
-          color: white;
+          background: #2a1112;
+          color: var(--foreground);
           font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
@@ -410,13 +417,13 @@ export default function SettingsPage() {
 
         .toggle-label {
           font-weight: 600;
-          color: var(--ink);
+          color: var(--foreground);
         }
 
         .info-list {
           margin: 0;
           padding: 0 0 0 20px;
-          color: var(--ink);
+          color: var(--foreground);
         }
 
         .info-list li {
@@ -444,7 +451,7 @@ export default function SettingsPage() {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: #ccc;
+          background-color: #2a1b1c;
           transition: 0.4s;
           border-radius: 28px;
         }
@@ -456,7 +463,7 @@ export default function SettingsPage() {
           width: 20px;
           left: 4px;
           bottom: 4px;
-          background-color: white;
+          background-color: #fef3c7;
           transition: 0.4s;
           border-radius: 50%;
         }

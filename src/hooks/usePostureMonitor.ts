@@ -333,7 +333,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       phonePenaltyActiveRef.current = true;
       phonePenaltyLastShoutRef.current = 0;
       phoneClearSinceRef.current = null;
-      speakRef.current("Put the phone away. Hands up where I can see them.", true);
+      speakRef.current("Cast the phone aside. Hands up where I can see them.", true);
       addDistractionRef.current();
     };
 
@@ -564,11 +564,11 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
           nowTime - postureBadSinceRef.current > POSTURE_ALERT_MS;
 
         if (downAlert) {
-          maybeAlert("Stop looking down. Eyes on the screen.");
+          maybeAlert("Eyes up. The pact demands the screen.");
         } else if (gazeAlert) {
-          maybeAlert("Look at the screen. Stay locked in.");
+          maybeAlert("Eyes forward. Stay bound.");
         } else if (postureAlert) {
-          maybeAlert("Sit up straight. Focus.");
+          maybeAlert("Sit up straight. Hold your posture.");
         }
 
         rafRef.current = requestAnimationFrame(detect);
