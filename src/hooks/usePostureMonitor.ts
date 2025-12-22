@@ -122,6 +122,7 @@ export function usePostureMonitor() {
   const speakRef = useRef(speak);
   const addDistractionRef = useRef(addDistraction);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoHostRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const faceLandmarkerRef = useRef<any>(null);
   const objectDetectorRef = useRef<any>(null);
@@ -186,6 +187,11 @@ export function usePostureMonitor() {
         videoRef.current.pause();
         videoRef.current.srcObject = null;
         videoRef.current = null;
+      }
+
+      if (videoHostRef.current) {
+        videoHostRef.current.remove();
+        videoHostRef.current = null;
       }
 
       resetState();
@@ -335,13 +341,37 @@ export function usePostureMonitor() {
         }
 
         streamRef.current = stream;
+        const host = document.createElement("div");
+        host.setAttribute("data-posture-monitor", "true");
+        host.style.cssText =
+          "position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: -9999px; top: -9999px;";
+        document.body.appendChild(host);
+        videoHostRef.current = host;
+
         const video = document.createElement("video");
         videoRef.current = video;
         video.autoplay = true;
         video.playsInline = true;
         video.muted = true;
         video.srcObject = stream;
-        await video.play();
+        host.appendChild(video);
+        if (video.readyState >= 1) {
+          await video.play();
+        } else {
+          await new Promise<void>((resolve, reject) => {
+            const onLoaded = () => {
+              video
+                .play()
+                .then(() => resolve())
+                .catch((error) => reject(error));
+            };
+            const onError = () => {
+              reject(new Error("Video metadata failed to load."));
+            };
+            video.addEventListener("loadedmetadata", onLoaded, { once: true });
+            video.addEventListener("error", onError, { once: true });
+          });
+        }
 
         const { FaceLandmarker, ObjectDetector, FilesetResolver } = await import(
           "@mediapipe/tasks-vision"
