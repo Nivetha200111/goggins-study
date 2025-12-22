@@ -13,6 +13,8 @@ export default function SettingsPage() {
     toggleMonitoring,
     isPostureMonitoringEnabled,
     togglePostureMonitoring,
+    isPostureDebugEnabled,
+    togglePostureDebug,
     isSoundEnabled,
     toggleSound,
     whitelist,
@@ -104,6 +106,23 @@ export default function SettingsPage() {
         </div>
         <p className="settings-help">
           Camera access is only used on-device for real-time checks.
+        </p>
+        <div className="toggle-row">
+          <label className="toggle-label" htmlFor="posture-debug-toggle">
+            Show Debug Overlay
+          </label>
+          <label className="switch">
+            <input
+              type="checkbox"
+              id="posture-debug-toggle"
+              checked={isPostureDebugEnabled}
+              onChange={togglePostureDebug}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
+        <p className="settings-help">
+          Shows a small camera preview with live posture status.
         </p>
       </section>
 

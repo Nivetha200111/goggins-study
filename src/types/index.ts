@@ -26,12 +26,14 @@ export interface GameState {
   isDemonModeEnabled: boolean;
   isMonitoringEnabled: boolean;
   isPostureMonitoringEnabled: boolean;
+  isPostureDebugEnabled: boolean;
   isSoundEnabled: boolean;
 
   setMood: (mood: Mood) => void;
   toggleDemonMode: () => void;
   toggleMonitoring: () => void;
   togglePostureMonitoring: () => void;
+  togglePostureDebug: () => void;
   toggleSound: () => void;
   startSession: () => void;
   endSession: () => void;

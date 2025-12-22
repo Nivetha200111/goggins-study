@@ -52,6 +52,7 @@ interface GameState {
   isDemonModeEnabled: boolean;
   isMonitoringEnabled: boolean;
   isPostureMonitoringEnabled: boolean;
+  isPostureDebugEnabled: boolean;
   isSoundEnabled: boolean;
   userId: string | null;
   isLoading: boolean;
@@ -60,6 +61,7 @@ interface GameState {
   toggleDemonMode: () => void;
   toggleMonitoring: () => void;
   togglePostureMonitoring: () => void;
+  togglePostureDebug: () => void;
   toggleSound: () => void;
   startSession: () => void;
   endSession: () => void;
@@ -120,6 +122,7 @@ export const useGameStore = create<GameState>()(
       isDemonModeEnabled: true,
       isMonitoringEnabled: true,
       isPostureMonitoringEnabled: false,
+      isPostureDebugEnabled: true,
       isSoundEnabled: true,
       userId: null,
       isLoading: false,
@@ -134,6 +137,9 @@ export const useGameStore = create<GameState>()(
 
       togglePostureMonitoring: () =>
         set((state) => ({ isPostureMonitoringEnabled: !state.isPostureMonitoringEnabled })),
+
+      togglePostureDebug: () =>
+        set((state) => ({ isPostureDebugEnabled: !state.isPostureDebugEnabled })),
 
       toggleSound: () =>
         set((state) => ({ isSoundEnabled: !state.isSoundEnabled })),
@@ -421,6 +427,7 @@ export const useGameStore = create<GameState>()(
         isDemonModeEnabled: state.isDemonModeEnabled,
         isMonitoringEnabled: state.isMonitoringEnabled,
         isPostureMonitoringEnabled: state.isPostureMonitoringEnabled,
+        isPostureDebugEnabled: state.isPostureDebugEnabled,
         isSoundEnabled: state.isSoundEnabled,
         notesByTab: state.notesByTab,
         whitelist: state.whitelist,

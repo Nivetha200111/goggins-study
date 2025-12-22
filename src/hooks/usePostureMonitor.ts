@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import { useGameStore } from "@/store/gameStore";
 import { useVoice } from "@/hooks/useVoice";
@@ -15,6 +15,7 @@ const GAZE_ALERT_MS = 3 * 60 * 1000;
 const LOOKING_DOWN_ALERT_MS = 20 * 1000;
 const PHONE_ALERT_MS = 5 * 1000;
 const ALERT_REPEAT_MS = 15 * 1000;
+const DEBUG_UPDATE_MS = 500;
 
 const THRESHOLDS = {
   yawAwayDeg: 24,
@@ -38,6 +39,48 @@ type ObjectDetectorResult = {
 
 type HeadAngles = { yaw: number; pitch: number; roll: number };
 type Baseline = HeadAngles & { noseRatio: number };
+
+export type PostureDebugState = {
+  status: "inactive" | "initializing" | "calibrating" | "tracking" | "no-face" | "error";
+  hasFace: boolean;
+  isLookingForward: boolean | null;
+  isSittingStraight: boolean | null;
+  isLookingDown: boolean | null;
+  hasPhone: boolean;
+  yaw: number | null;
+  pitch: number | null;
+  roll: number | null;
+  yawDelta: number | null;
+  pitchDelta: number | null;
+  rollDelta: number | null;
+  calibrationFrames: number;
+  calibrationTarget: number;
+  error: string | null;
+  updatedAt: number;
+};
+
+export type PostureMonitorOptions = {
+  debug?: boolean;
+};
+
+const INITIAL_DEBUG_STATE: PostureDebugState = {
+  status: "inactive",
+  hasFace: false,
+  isLookingForward: null,
+  isSittingStraight: null,
+  isLookingDown: null,
+  hasPhone: false,
+  yaw: null,
+  pitch: null,
+  roll: null,
+  yawDelta: null,
+  pitchDelta: null,
+  rollDelta: null,
+  calibrationFrames: 0,
+  calibrationTarget: CALIBRATION_FRAMES,
+  error: null,
+  updatedAt: 0,
+};
 
 const VISION_WASM_PATH =
   process.env.NEXT_PUBLIC_VISION_WASM_PATH ||
@@ -114,10 +157,12 @@ function hasPhoneDetection(result: ObjectDetectorResult | null): boolean {
   );
 }
 
-export function usePostureMonitor() {
+export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const { isSessionActive, isMonitoringEnabled, isPostureMonitoringEnabled, addDistraction } =
     useGameStore();
   const { speak } = useVoice();
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+  const [debugState, setDebugState] = useState<PostureDebugState | null>(null);
 
   const speakRef = useRef(speak);
   const addDistractionRef = useRef(addDistraction);
@@ -137,6 +182,9 @@ export function usePostureMonitor() {
   const lookingDownSinceRef = useRef<number | null>(null);
   const phoneSinceRef = useRef<number | null>(null);
   const lastAlertRef = useRef<number>(0);
+  const debugStateRef = useRef<PostureDebugState>(INITIAL_DEBUG_STATE);
+  const debugEnabledRef = useRef(Boolean(options.debug));
+  const lastDebugUpdateRef = useRef<number>(0);
 
   useEffect(() => {
     speakRef.current = speak;
@@ -147,11 +195,39 @@ export function usePostureMonitor() {
   }, [addDistraction]);
 
   useEffect(() => {
+    debugEnabledRef.current = Boolean(options.debug);
+    if (debugEnabledRef.current) {
+      setDebugState(debugStateRef.current);
+    } else {
+      setDebugState(null);
+    }
+  }, [options.debug]);
+
+  useEffect(() => {
     if (!isSessionActive || !isMonitoringEnabled || !isPostureMonitoringEnabled) {
+      debugStateRef.current = { ...INITIAL_DEBUG_STATE, updatedAt: Date.now() };
+      if (debugEnabledRef.current) {
+        setDebugState(debugStateRef.current);
+      }
+      setPreviewStream(null);
       return;
     }
 
     let cancelled = false;
+
+    const updateDebugState = (partial: Partial<PostureDebugState>) => {
+      const now = Date.now();
+      const next: PostureDebugState = {
+        ...debugStateRef.current,
+        ...partial,
+        updatedAt: now,
+      };
+      debugStateRef.current = next;
+      if (!debugEnabledRef.current) return;
+      if (now - lastDebugUpdateRef.current < DEBUG_UPDATE_MS) return;
+      lastDebugUpdateRef.current = now;
+      setDebugState(next);
+    };
 
     const resetState = () => {
       baselineRef.current = null;
@@ -161,6 +237,7 @@ export function usePostureMonitor() {
       lookingDownSinceRef.current = null;
       phoneSinceRef.current = null;
       lastAlertRef.current = 0;
+      updateDebugState({ ...INITIAL_DEBUG_STATE, status: "inactive" });
     };
 
     const cleanup = () => {
@@ -194,6 +271,7 @@ export function usePostureMonitor() {
         videoHostRef.current = null;
       }
 
+      setPreviewStream(null);
       resetState();
     };
 
@@ -263,9 +341,28 @@ export function usePostureMonitor() {
           updateTimer(gazeAwaySinceRef, true);
           updateTimer(postureBadSinceRef, false);
           updateTimer(lookingDownSinceRef, false);
+          updateDebugState({
+            status: "no-face",
+            hasFace: false,
+            hasPhone,
+            isLookingForward: null,
+            isSittingStraight: null,
+            isLookingDown: null,
+            yaw: null,
+            pitch: null,
+            roll: null,
+            yawDelta: null,
+            pitchDelta: null,
+            rollDelta: null,
+            calibrationFrames: calibrationRef.current.length,
+            error: null,
+          });
         } else {
           const noseRatio = getNoseRatio(faceLandmarks);
           const angles = getHeadAngles(transformMatrix as Float32Array);
+          const yaw = Number.isFinite(angles.yaw) ? angles.yaw : 0;
+          const pitch = Number.isFinite(angles.pitch) ? angles.pitch : 0;
+          const roll = Number.isFinite(angles.roll) ? angles.roll : 0;
 
           if (!baselineRef.current) {
             if (noseRatio !== null) {
@@ -275,6 +372,22 @@ export function usePostureMonitor() {
                 calibrationRef.current = [];
               }
             }
+            updateDebugState({
+              status: "calibrating",
+              hasFace: true,
+              hasPhone,
+              isLookingForward: null,
+              isSittingStraight: null,
+              isLookingDown: null,
+              yaw,
+              pitch,
+              roll,
+              yawDelta: null,
+              pitchDelta: null,
+              rollDelta: null,
+              calibrationFrames: calibrationRef.current.length,
+              error: null,
+            });
           } else if (noseRatio !== null) {
             const baseline = baselineRef.current;
             const pitchDelta = angles.pitch - baseline.pitch;
@@ -294,6 +407,39 @@ export function usePostureMonitor() {
             updateTimer(gazeAwaySinceRef, !isLookingForward);
             updateTimer(postureBadSinceRef, !isSittingStraight);
             updateTimer(lookingDownSinceRef, isLookingDown);
+            updateDebugState({
+              status: "tracking",
+              hasFace: true,
+              hasPhone,
+              isLookingForward,
+              isSittingStraight,
+              isLookingDown,
+              yaw,
+              pitch,
+              roll,
+              yawDelta,
+              pitchDelta,
+              rollDelta,
+              calibrationFrames: CALIBRATION_FRAMES,
+              error: null,
+            });
+          } else {
+            updateDebugState({
+              status: "calibrating",
+              hasFace: true,
+              hasPhone,
+              isLookingForward: null,
+              isSittingStraight: null,
+              isLookingDown: null,
+              yaw,
+              pitch,
+              roll,
+              yawDelta: null,
+              pitchDelta: null,
+              rollDelta: null,
+              calibrationFrames: calibrationRef.current.length,
+              error: null,
+            });
           }
         }
 
@@ -327,10 +473,17 @@ export function usePostureMonitor() {
 
     const setup = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
+        updateDebugState({
+          status: "error",
+          error: "Camera not available.",
+          hasFace: false,
+          hasPhone: false,
+        });
         return;
       }
 
       try {
+        updateDebugState({ status: "initializing", error: null });
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
           audio: false,
@@ -341,6 +494,7 @@ export function usePostureMonitor() {
         }
 
         streamRef.current = stream;
+        setPreviewStream(stream);
         const host = document.createElement("div");
         host.setAttribute("data-posture-monitor", "true");
         host.style.cssText =
@@ -398,8 +552,22 @@ export function usePostureMonitor() {
         }
 
         resetState();
+        updateDebugState({
+          status: "calibrating",
+          hasFace: false,
+          hasPhone: false,
+          calibrationFrames: 0,
+          error: null,
+        });
         startDetection();
       } catch (error) {
+        const message = error instanceof Error ? error.message : "Camera error.";
+        updateDebugState({
+          status: "error",
+          error: message,
+          hasFace: false,
+          hasPhone: false,
+        });
         console.warn("Posture monitoring unavailable:", error);
         cleanup();
       }
@@ -412,4 +580,6 @@ export function usePostureMonitor() {
       cleanup();
     };
   }, [isSessionActive, isMonitoringEnabled, isPostureMonitoringEnabled]);
+
+  return { stream: previewStream, debug: debugState };
 }
