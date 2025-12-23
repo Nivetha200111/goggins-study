@@ -407,10 +407,14 @@ export function PostureMonitor() {
     debug?.handsUp === null ? "--" : debug?.handsUp ? "Yes" : "No";
   const phonePenaltyLabel = debug?.phonePenaltyActive ? "Cursed" : "Clear";
   const moodLabel = mood === "demon" ? "INFERNAL" : mood.toUpperCase();
+  const yawnLabel = debug?.isYawning ? "😴 Yes" : "No";
+  const yawnCountLabel = debug?.yawnCount ?? 0;
+  const drowsyLabel = debug?.isDrowsy ? "⚠️ Drowsy!" : "Alert";
   const calibrationLabel =
     debug?.status === "calibrating"
       ? `Calibrating ${debug.calibrationFrames}/${debug.calibrationTarget}`
       : null;
+  const isTracking = debug?.status === "tracking";
 
   return (
     <div className={`posture-debug ${isMinimized ? "minimized" : ""}`}>
@@ -514,62 +518,130 @@ export function PostureMonitor() {
                 </div>
               </div>
             </div>
-            <div className="posture-video">
+            <div className={`posture-video ${isTracking ? "tracking" : ""}`}>
               {stream ? (
                 <video ref={videoRef} autoPlay playsInline muted />
               ) : (
                 <div className="posture-placeholder">Camera inactive</div>
               )}
-            </div>
-            <div className="posture-stats">
-              <div className="stat">
-                <span>Face</span>
-                <strong>{faceLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Posture</span>
-                <strong>{postureLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Gaze</span>
-                <strong>{gazeLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Down</span>
-                <strong>{downLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Phone</span>
-                <strong>{phoneLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Hands</span>
-                <strong>{handsLabel}</strong>
-              </div>
-              <div className="stat">
-                <span>Hands Up</span>
-                <strong>{handsUpLabel}</strong>
-              </div>
-              <div className="angles">
-                <span>Yaw</span>
-                <strong>{formatAngle(debug?.yaw ?? null)}</strong>
-                <span>Pitch</span>
-                <strong>{formatAngle(debug?.pitch ?? null)}</strong>
-                <span>Roll</span>
-                <strong>{formatAngle(debug?.roll ?? null)}</strong>
-              </div>
-              {debug?.yawDelta != null &&
-              debug?.pitchDelta != null &&
-              debug?.rollDelta != null ? (
-                <div className="angles">
-                  <span>Dy</span>
-                  <strong>{formatAngle(debug.yawDelta)}</strong>
-                  <span>Dp</span>
-                  <strong>{formatAngle(debug.pitchDelta)}</strong>
-                  <span>Dr</span>
-                  <strong>{formatAngle(debug.rollDelta)}</strong>
+              {isTracking && (
+                <div className="tracking-overlay">
+                  <div className="tracking-corner tl" />
+                  <div className="tracking-corner tr" />
+                  <div className="tracking-corner bl" />
+                  <div className="tracking-corner br" />
+                  {debug?.isYawning && <div className="yawn-indicator">😴 YAWNING</div>}
+                  {debug?.isDrowsy && <div className="drowsy-indicator">⚠️ DROWSY</div>}
                 </div>
-              ) : null}
+              )}
+            </div>
+            
+            {/* Status Cards */}
+            <div className="status-cards">
+              <div className={`status-card ${debug?.hasFace ? "good" : "bad"}`}>
+                <div className="card-icon">{debug?.hasFace ? "👤" : "❌"}</div>
+                <div className="card-label">Face</div>
+              </div>
+              <div className={`status-card ${debug?.isSittingStraight ? "good" : debug?.isSittingStraight === false ? "bad" : "neutral"}`}>
+                <div className="card-icon">{debug?.isSittingStraight ? "🧘" : "🦥"}</div>
+                <div className="card-label">Posture</div>
+              </div>
+              <div className={`status-card ${debug?.isLookingForward ? "good" : debug?.isLookingForward === false ? "bad" : "neutral"}`}>
+                <div className="card-icon">{debug?.isLookingForward ? "👀" : "👁️"}</div>
+                <div className="card-label">Gaze</div>
+              </div>
+              <div className={`status-card ${debug?.hasPhone ? "bad" : "good"}`}>
+                <div className="card-icon">{debug?.hasPhone ? "📱" : "✅"}</div>
+                <div className="card-label">Phone</div>
+              </div>
+              <div className={`status-card ${debug?.handsDetected >= 2 ? "good" : "neutral"}`}>
+                <div className="card-icon">✋</div>
+                <div className="card-label">{handsLabel} hands</div>
+              </div>
+              <div className={`status-card ${debug?.isYawning ? "bad" : debug?.isDrowsy ? "warning" : "good"}`}>
+                <div className="card-icon">{debug?.isYawning ? "😴" : debug?.isDrowsy ? "😪" : "😊"}</div>
+                <div className="card-label">{debug?.isDrowsy ? "Drowsy" : debug?.isYawning ? "Yawning" : "Alert"}</div>
+              </div>
+            </div>
+
+            {/* Detailed Stats */}
+            <div className="posture-stats">
+              <div className="stat-group">
+                <div className="stat-group-title">Detection</div>
+                <div className="stat-row">
+                  <span>Face Detected</span>
+                  <strong className={debug?.hasFace ? "good" : "bad"}>{faceLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Posture</span>
+                  <strong className={debug?.isSittingStraight ? "good" : debug?.isSittingStraight === false ? "bad" : ""}>{postureLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Gaze</span>
+                  <strong className={debug?.isLookingForward ? "good" : debug?.isLookingForward === false ? "bad" : ""}>{gazeLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Looking Down</span>
+                  <strong className={debug?.isLookingDown ? "bad" : ""}>{downLabel}</strong>
+                </div>
+              </div>
+              
+              <div className="stat-group">
+                <div className="stat-group-title">Alertness</div>
+                <div className="stat-row">
+                  <span>Yawning</span>
+                  <strong className={debug?.isYawning ? "bad" : ""}>{yawnLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Yawn Count</span>
+                  <strong className={yawnCountLabel >= 2 ? "warning" : ""}>{yawnCountLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Status</span>
+                  <strong className={debug?.isDrowsy ? "bad" : "good"}>{drowsyLabel}</strong>
+                </div>
+              </div>
+
+              <div className="stat-group">
+                <div className="stat-group-title">Phone & Hands</div>
+                <div className="stat-row">
+                  <span>Phone</span>
+                  <strong className={debug?.hasPhone ? "bad" : "good"}>{phoneLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Hands Visible</span>
+                  <strong>{handsLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Hands Up</span>
+                  <strong className={debug?.handsUp ? "good" : ""}>{handsUpLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Phone Status</span>
+                  <strong className={debug?.phonePenaltyActive ? "bad" : "good"}>{phonePenaltyLabel}</strong>
+                </div>
+              </div>
+
+              <div className="stat-group">
+                <div className="stat-group-title">Head Angles</div>
+                <div className="angles-grid">
+                  <div className="angle-item">
+                    <span>Yaw</span>
+                    <strong>{formatAngle(debug?.yaw ?? null)}</strong>
+                    {debug?.yawDelta != null && <small>Δ {formatAngle(debug.yawDelta)}</small>}
+                  </div>
+                  <div className="angle-item">
+                    <span>Pitch</span>
+                    <strong>{formatAngle(debug?.pitch ?? null)}</strong>
+                    {debug?.pitchDelta != null && <small>Δ {formatAngle(debug.pitchDelta)}</small>}
+                  </div>
+                  <div className="angle-item">
+                    <span>Roll</span>
+                    <strong>{formatAngle(debug?.roll ?? null)}</strong>
+                    {debug?.rollDelta != null && <small>Δ {formatAngle(debug.rollDelta)}</small>}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           {calibrationLabel ? <div className="posture-note">{calibrationLabel}</div> : null}
@@ -690,17 +762,68 @@ export function PostureMonitor() {
           font-weight: 700;
         }
         .posture-video {
+          position: relative;
           width: 100%;
-          border-radius: 10px;
+          border-radius: 12px;
           overflow: hidden;
           background: #050406;
           aspect-ratio: 4 / 3;
+          border: 2px solid rgba(139, 69, 69, 0.3);
+        }
+        .posture-video.tracking {
+          border-color: #22c55e;
+          box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
         }
         .posture-video video {
           width: 100%;
           height: 100%;
           object-fit: cover;
           transform: scaleX(-1);
+        }
+        .tracking-overlay {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        .tracking-corner {
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          border: 3px solid #22c55e;
+        }
+        .tracking-corner.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+        .tracking-corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+        .tracking-corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+        .tracking-corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+        .yawn-indicator {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(234, 179, 8, 0.9);
+          color: #000;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          animation: pulse 1s infinite;
+        }
+        .drowsy-indicator {
+          position: absolute;
+          bottom: 12px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(239, 68, 68, 0.9);
+          color: #fff;
+          padding: 6px 14px;
+          border-radius: 16px;
+          font-weight: 700;
+          font-size: 0.8rem;
+          animation: pulse 0.8s infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); }
         }
         .posture-placeholder {
           height: 100%;
@@ -710,25 +833,142 @@ export function PostureMonitor() {
           color: rgba(247, 231, 214, 0.7);
           font-weight: 600;
         }
+        
+        /* Status Cards */
+        .status-cards {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        .status-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 10px 6px;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 10px;
+          border: 2px solid transparent;
+          transition: all 0.2s;
+        }
+        .status-card.good {
+          border-color: rgba(34, 197, 94, 0.5);
+          background: rgba(34, 197, 94, 0.1);
+        }
+        .status-card.bad {
+          border-color: rgba(239, 68, 68, 0.5);
+          background: rgba(239, 68, 68, 0.1);
+          animation: badPulse 1.5s infinite;
+        }
+        .status-card.warning {
+          border-color: rgba(234, 179, 8, 0.5);
+          background: rgba(234, 179, 8, 0.1);
+        }
+        .status-card.neutral {
+          border-color: rgba(139, 69, 69, 0.3);
+        }
+        @keyframes badPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          50% { box-shadow: 0 0 12px 2px rgba(239, 68, 68, 0.3); }
+        }
+        .card-icon {
+          font-size: 1.4rem;
+          margin-bottom: 4px;
+        }
+        .card-label {
+          font-size: 0.65rem;
+          color: rgba(247, 231, 214, 0.8);
+          font-weight: 600;
+          text-align: center;
+        }
+        
+        /* Stats Groups */
         .posture-stats {
           display: grid;
-          gap: 6px;
+          gap: 10px;
+          max-height: 300px;
+          overflow-y: auto;
+          padding-right: 4px;
         }
-        .stat,
-        .angles {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 8px;
+        .posture-stats::-webkit-scrollbar {
+          width: 4px;
+        }
+        .posture-stats::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.2);
+          border-radius: 2px;
+        }
+        .posture-stats::-webkit-scrollbar-thumb {
+          background: rgba(139, 69, 69, 0.5);
+          border-radius: 2px;
+        }
+        .stat-group {
+          background: rgba(0, 0, 0, 0.25);
+          border-radius: 10px;
+          padding: 10px;
+          border: 1px solid rgba(139, 69, 69, 0.2);
+        }
+        .stat-group-title {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: rgba(247, 231, 214, 0.5);
+          margin-bottom: 8px;
+          padding-bottom: 6px;
+          border-bottom: 1px solid rgba(139, 69, 69, 0.2);
+        }
+        .stat-row {
+          display: flex;
+          justify-content: space-between;
           align-items: center;
+          padding: 4px 0;
+          font-size: 0.75rem;
         }
-        .angles {
-          grid-template-columns: repeat(6, auto);
-          gap: 6px;
-          font-size: 0.7rem;
-          color: var(--muted);
+        .stat-row span {
+          color: rgba(247, 231, 214, 0.7);
         }
-        .stat span {
-          color: var(--muted);
+        .stat-row strong {
+          font-weight: 600;
+          color: #f7e7d6;
+        }
+        .stat-row strong.good {
+          color: #22c55e;
+        }
+        .stat-row strong.bad {
+          color: #ef4444;
+        }
+        .stat-row strong.warning {
+          color: #eab308;
+        }
+        
+        /* Angles Grid */
+        .angles-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+        .angle-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 8px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+        }
+        .angle-item span {
+          font-size: 0.6rem;
+          color: rgba(247, 231, 214, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .angle-item strong {
+          font-size: 0.8rem;
+          color: #f7e7d6;
+          margin: 2px 0;
+        }
+        .angle-item small {
+          font-size: 0.6rem;
+          color: rgba(247, 231, 214, 0.4);
         }
         .mood-pill {
           display: inline-flex;

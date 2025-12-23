@@ -14,15 +14,18 @@ const POSTURE_ALERT_MS = 3 * 60 * 1000;
 const GAZE_ALERT_MS = 3 * 60 * 1000;
 const LOOKING_DOWN_ALERT_MS = 20 * 1000;
 const PHONE_ALERT_MS = 2 * 1000;
+const YAWN_ALERT_MS = 3 * 1000;
 const ALERT_REPEAT_MS = 15 * 1000;
 const DEBUG_UPDATE_MS = 300;
 const PHONE_PENALTY_REPEAT_MS = 5000;
 const PHONE_CLEAR_CONFIRM_MS = 800;
 const HANDS_UP_WRIST_Y = 0.72;
+const YAWN_THRESHOLD = 0.35;
+const DROWSY_YAWN_COUNT = 2;
 
-type AlertType = "down" | "gaze" | "posture";
+type AlertType = "down" | "gaze" | "posture" | "yawn";
 
-const ALERT_ORDER: AlertType[] = ["down", "gaze", "posture"];
+const ALERT_ORDER: AlertType[] = ["yawn", "down", "gaze", "posture"];
 
 const ALERT_LINES: Record<AlertType, string[]> = {
   down: [
@@ -39,6 +42,12 @@ const ALERT_LINES: Record<AlertType, string[]> = {
     "Sit up straight. Hold your posture.",
     "Back straight. Do not slouch.",
     "Stand tall. The pact does not bend.",
+  ],
+  yawn: [
+    "Wake up! The pact does not sleep.",
+    "Stay alert! No drifting off.",
+    "I see you yawning. Focus!",
+    "Tired? Too bad. Keep working.",
   ],
 };
 
@@ -87,6 +96,10 @@ export type PostureDebugState = {
   isLookingForward: boolean | null;
   isSittingStraight: boolean | null;
   isLookingDown: boolean | null;
+  isYawning: boolean;
+  yawnCount: number;
+  isDrowsy: boolean;
+  mouthOpenRatio: number | null;
   hasPhone: boolean;
   handsDetected: number;
   handsUp: boolean | null;
@@ -113,6 +126,10 @@ const INITIAL_DEBUG_STATE: PostureDebugState = {
   isLookingForward: null,
   isSittingStraight: null,
   isLookingDown: null,
+  isYawning: false,
+  yawnCount: 0,
+  isDrowsy: false,
+  mouthOpenRatio: null,
   hasPhone: false,
   handsDetected: 0,
   handsUp: null,
@@ -207,6 +224,32 @@ function hasPhoneDetection(result: ObjectDetectorResult | null): boolean {
   );
 }
 
+function getMouthOpenRatio(landmarks: NormalizedLandmark[]): number | null {
+  // MediaPipe face landmarks for mouth
+  // Upper lip: 13, Lower lip: 14, Left corner: 61, Right corner: 291
+  const upperLip = landmarks[13];
+  const lowerLip = landmarks[14];
+  const leftCorner = landmarks[61];
+  const rightCorner = landmarks[291];
+
+  if (!upperLip || !lowerLip || !leftCorner || !rightCorner) return null;
+
+  // Calculate vertical opening (distance between upper and lower lip)
+  const verticalDist = Math.sqrt(
+    Math.pow(lowerLip.x - upperLip.x, 2) + Math.pow(lowerLip.y - upperLip.y, 2)
+  );
+
+  // Calculate horizontal width (distance between mouth corners)
+  const horizontalDist = Math.sqrt(
+    Math.pow(rightCorner.x - leftCorner.x, 2) + Math.pow(rightCorner.y - leftCorner.y, 2)
+  );
+
+  if (horizontalDist === 0) return null;
+
+  // Mouth Aspect Ratio
+  return verticalDist / horizontalDist;
+}
+
 function areHandsUp(landmarks: NormalizedLandmark[][]): boolean {
   if (!landmarks || landmarks.length < 2) return false;
   // Check that both detected hands have wrists in upper portion of frame
@@ -258,9 +301,13 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
     down: 0,
     gaze: 0,
     posture: 0,
+    yawn: 0,
   });
   const phonePenaltyLineIndexRef = useRef(0);
   const phoneRepeatLineIndexRef = useRef(0);
+  const yawningSinceRef = useRef<number | null>(null);
+  const yawnCountRef = useRef(0);
+  const lastYawnEndRef = useRef<number>(0);
 
   useEffect(() => {
     speakRef.current = speak;
@@ -555,9 +602,37 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
             const isLookingDown =
               Math.abs(pitchDelta) > THRESHOLDS.pitchDownDeg || ratioDown;
 
+            // Yawn detection
+            const mouthOpenRatio = getMouthOpenRatio(faceLandmarks);
+            const isYawning = mouthOpenRatio !== null && mouthOpenRatio > YAWN_THRESHOLD;
+            
+            // Track yawn timing
+            const nowMs = Date.now();
+            if (isYawning) {
+              if (yawningSinceRef.current === null) {
+                yawningSinceRef.current = nowMs;
+              }
+            } else {
+              if (yawningSinceRef.current !== null) {
+                // Yawn just ended - count it if it lasted long enough
+                if (nowMs - yawningSinceRef.current > 500) {
+                  yawnCountRef.current += 1;
+                  lastYawnEndRef.current = nowMs;
+                }
+                yawningSinceRef.current = null;
+              }
+              // Reset yawn count after 2 minutes of no yawning
+              if (nowMs - lastYawnEndRef.current > 120000) {
+                yawnCountRef.current = 0;
+              }
+            }
+            
+            const isDrowsy = yawnCountRef.current >= DROWSY_YAWN_COUNT;
+
             updateTimer(gazeAwaySinceRef, !isLookingForward);
             updateTimer(postureBadSinceRef, !isSittingStraight);
             updateTimer(lookingDownSinceRef, isLookingDown);
+            updateTimer(yawningSinceRef, isYawning);
             updateDebugState({
               status: "tracking",
               hasFace: true,
@@ -568,6 +643,10 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               isLookingForward,
               isSittingStraight,
               isLookingDown,
+              isYawning,
+              yawnCount: yawnCountRef.current,
+              isDrowsy,
+              mouthOpenRatio,
               yaw,
               pitch,
               roll,
@@ -649,8 +728,12 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
         const postureAlert =
           postureBadSinceRef.current &&
           nowTime - postureBadSinceRef.current > POSTURE_ALERT_MS;
+        const yawnAlert =
+          yawningSinceRef.current &&
+          nowTime - yawningSinceRef.current > YAWN_ALERT_MS;
 
         const eligibleAlerts: AlertType[] = [];
+        if (yawnAlert) eligibleAlerts.push("yawn");
         if (downAlert) eligibleAlerts.push("down");
         if (gazeAlert) eligibleAlerts.push("gaze");
         if (postureAlert) eligibleAlerts.push("posture");
