@@ -364,7 +364,7 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       phonePenaltyLastShoutRef.current = 0;
       phoneClearSinceRef.current = null;
       lastAlertTypeRef.current = null;
-      alertLineIndexRef.current = { down: 0, gaze: 0, posture: 0 };
+      alertLineIndexRef.current = { down: 0, gaze: 0, posture: 0, yawn: 0 };
       phonePenaltyLineIndexRef.current = 0;
       phoneRepeatLineIndexRef.current = 0;
       updateDebugState({ ...INITIAL_DEBUG_STATE, status: "inactive" });
