@@ -1,5 +1,6 @@
 "use client";
 
+// PostureMonitor component with yawn detection and tracking UI
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useGameStore } from "@/store/gameStore";
 import { usePostureMonitor } from "@/hooks/usePostureMonitor";
