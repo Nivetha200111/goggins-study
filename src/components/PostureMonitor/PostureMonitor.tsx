@@ -554,7 +554,7 @@ export function PostureMonitor() {
                 <div className="card-icon">{debug?.hasPhone ? "📱" : "✅"}</div>
                 <div className="card-label">Phone</div>
               </div>
-              <div className={`status-card ${debug?.handsDetected >= 2 ? "good" : "neutral"}`}>
+              <div className={`status-card ${(debug?.handsDetected ?? 0) >= 2 ? "good" : "neutral"}`}>
                 <div className="card-icon">✋</div>
                 <div className="card-label">{handsLabel} hands</div>
               </div>
