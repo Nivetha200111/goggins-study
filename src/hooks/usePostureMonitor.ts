@@ -7,18 +7,18 @@ import { useVoice } from "@/hooks/useVoice";
 
 const RAD_TO_DEG = 180 / Math.PI;
 
-const DETECTION_INTERVAL_MS = 350;
-const CALIBRATION_FRAMES = 12;
+const DETECTION_INTERVAL_MS = 150;
+const CALIBRATION_FRAMES = 10;
 
 const POSTURE_ALERT_MS = 3 * 60 * 1000;
 const GAZE_ALERT_MS = 3 * 60 * 1000;
 const LOOKING_DOWN_ALERT_MS = 20 * 1000;
-const PHONE_ALERT_MS = 5 * 1000;
+const PHONE_ALERT_MS = 2 * 1000;
 const ALERT_REPEAT_MS = 15 * 1000;
-const DEBUG_UPDATE_MS = 500;
-const PHONE_PENALTY_REPEAT_MS = 6000;
-const PHONE_CLEAR_CONFIRM_MS = 2000;
-const HANDS_UP_WRIST_Y = 0.65;
+const DEBUG_UPDATE_MS = 300;
+const PHONE_PENALTY_REPEAT_MS = 5000;
+const PHONE_CLEAR_CONFIRM_MS = 800;
+const HANDS_UP_WRIST_Y = 0.72;
 
 type AlertType = "down" | "gaze" | "posture";
 
