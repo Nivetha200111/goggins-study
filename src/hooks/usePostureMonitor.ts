@@ -22,6 +22,8 @@ const PHONE_CLEAR_CONFIRM_MS = 800;
 const HANDS_UP_WRIST_Y = 0.72;
 const YAWN_THRESHOLD = 0.35;
 const DROWSY_YAWN_COUNT = 2;
+const EYE_DROWSY_THRESHOLD = 0.18;
+const EYE_CLOSED_THRESHOLD = 0.12;
 
 type AlertType = "down" | "gaze" | "posture" | "yawn";
 
@@ -100,6 +102,9 @@ export type PostureDebugState = {
   yawnCount: number;
   isDrowsy: boolean;
   mouthOpenRatio: number | null;
+  eyeAspectRatio: number | null;
+  eyesDroopy: boolean;
+  eyesClosed: boolean;
   hasPhone: boolean;
   handsDetected: number;
   handsUp: boolean | null;
@@ -130,6 +135,9 @@ const INITIAL_DEBUG_STATE: PostureDebugState = {
   yawnCount: 0,
   isDrowsy: false,
   mouthOpenRatio: null,
+  eyeAspectRatio: null,
+  eyesDroopy: false,
+  eyesClosed: false,
   hasPhone: false,
   handsDetected: 0,
   handsUp: null,
@@ -248,6 +256,53 @@ function getMouthOpenRatio(landmarks: NormalizedLandmark[]): number | null {
 
   // Mouth Aspect Ratio
   return verticalDist / horizontalDist;
+}
+
+function getEyeAspectRatio(landmarks: NormalizedLandmark[]): { left: number; right: number; avg: number } | null {
+  // MediaPipe face landmarks for eyes
+  // Left eye: upper 159, lower 145, left corner 33, right corner 133
+  // Right eye: upper 386, lower 374, left corner 362, right corner 263
+  
+  const leftEyeUpper = landmarks[159];
+  const leftEyeLower = landmarks[145];
+  const leftEyeLeft = landmarks[33];
+  const leftEyeRight = landmarks[133];
+  
+  const rightEyeUpper = landmarks[386];
+  const rightEyeLower = landmarks[374];
+  const rightEyeLeft = landmarks[362];
+  const rightEyeRight = landmarks[263];
+
+  if (!leftEyeUpper || !leftEyeLower || !leftEyeLeft || !leftEyeRight ||
+      !rightEyeUpper || !rightEyeLower || !rightEyeLeft || !rightEyeRight) {
+    return null;
+  }
+
+  // Calculate Eye Aspect Ratio (EAR) for each eye
+  // EAR = vertical distance / horizontal distance
+  // Lower EAR = more closed eyes = drowsy
+  
+  const leftVertical = Math.sqrt(
+    Math.pow(leftEyeLower.x - leftEyeUpper.x, 2) + Math.pow(leftEyeLower.y - leftEyeUpper.y, 2)
+  );
+  const leftHorizontal = Math.sqrt(
+    Math.pow(leftEyeRight.x - leftEyeLeft.x, 2) + Math.pow(leftEyeRight.y - leftEyeLeft.y, 2)
+  );
+  
+  const rightVertical = Math.sqrt(
+    Math.pow(rightEyeLower.x - rightEyeUpper.x, 2) + Math.pow(rightEyeLower.y - rightEyeUpper.y, 2)
+  );
+  const rightHorizontal = Math.sqrt(
+    Math.pow(rightEyeRight.x - rightEyeLeft.x, 2) + Math.pow(rightEyeRight.y - rightEyeLeft.y, 2)
+  );
+
+  if (leftHorizontal === 0 || rightHorizontal === 0) return null;
+
+  const leftEAR = leftVertical / leftHorizontal;
+  const rightEAR = rightVertical / rightHorizontal;
+  const avgEAR = (leftEAR + rightEAR) / 2;
+
+  return { left: leftEAR, right: rightEAR, avg: avgEAR };
 }
 
 function areHandsUp(landmarks: NormalizedLandmark[][]): boolean {
@@ -606,6 +661,12 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
             const mouthOpenRatio = getMouthOpenRatio(faceLandmarks);
             const isYawning = mouthOpenRatio !== null && mouthOpenRatio > YAWN_THRESHOLD;
             
+            // Eye drowsiness detection
+            const eyeMetrics = getEyeAspectRatio(faceLandmarks);
+            const eyeAspectRatio = eyeMetrics?.avg ?? null;
+            const eyesDroopy = eyeAspectRatio !== null && eyeAspectRatio < EYE_DROWSY_THRESHOLD;
+            const eyesClosed = eyeAspectRatio !== null && eyeAspectRatio < EYE_CLOSED_THRESHOLD;
+            
             // Track yawn timing
             const nowMs = Date.now();
             if (isYawning) {
@@ -627,7 +688,11 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               }
             }
             
-            const isDrowsy = yawnCountRef.current >= DROWSY_YAWN_COUNT;
+            // Combined drowsiness: multiple yawns OR droopy eyes OR (yawn + droopy eyes)
+            const isDrowsy = 
+              yawnCountRef.current >= DROWSY_YAWN_COUNT || 
+              eyesDroopy ||
+              (isYawning && eyesDroopy);
 
             updateTimer(gazeAwaySinceRef, !isLookingForward);
             updateTimer(postureBadSinceRef, !isSittingStraight);
@@ -647,6 +712,9 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
               yawnCount: yawnCountRef.current,
               isDrowsy,
               mouthOpenRatio,
+              eyeAspectRatio,
+              eyesDroopy,
+              eyesClosed,
               yaw,
               pitch,
               roll,

@@ -410,6 +410,8 @@ export function PostureMonitor() {
   const moodLabel = mood === "demon" ? "INFERNAL" : mood.toUpperCase();
   const yawnLabel = debug?.isYawning ? "😴 Yes" : "No";
   const yawnCountLabel = debug?.yawnCount ?? 0;
+  const eyeLabel = debug?.eyesClosed ? "😴 Closed" : debug?.eyesDroopy ? "😪 Droopy" : "👁️ Open";
+  const earLabel = debug?.eyeAspectRatio !== null ? debug.eyeAspectRatio.toFixed(2) : "--";
   const drowsyLabel = debug?.isDrowsy ? "⚠️ Drowsy!" : "Alert";
   const calibrationLabel =
     debug?.status === "calibrating"
@@ -425,9 +427,9 @@ export function PostureMonitor() {
           <button type="button" className="popout-btn" onClick={handlePopOut} title="Pop out to separate window">
             ↗
           </button>
-          <button type="button" onClick={() => setIsMinimized((prev) => !prev)}>
+        <button type="button" onClick={() => setIsMinimized((prev) => !prev)}>
             {isMinimized ? "+" : "−"}
-          </button>
+        </button>
         </div>
       </div>
       {isMinimized ? (
@@ -531,7 +533,9 @@ export function PostureMonitor() {
                   <div className="tracking-corner tr" />
                   <div className="tracking-corner bl" />
                   <div className="tracking-corner br" />
-                  {debug?.isYawning && <div className="yawn-indicator">😴 YAWNING</div>}
+                  {debug?.eyesClosed && <div className="eyes-closed-indicator">😴 EYES CLOSED</div>}
+                  {debug?.isYawning && !debug?.eyesClosed && <div className="yawn-indicator">🥱 YAWNING</div>}
+                  {debug?.eyesDroopy && !debug?.eyesClosed && !debug?.isYawning && <div className="droopy-indicator">😪 DROOPY EYES</div>}
                   {debug?.isDrowsy && <div className="drowsy-indicator">⚠️ DROWSY</div>}
                 </div>
               )}
@@ -559,9 +563,9 @@ export function PostureMonitor() {
                 <div className="card-icon">✋</div>
                 <div className="card-label">{handsLabel} hands</div>
               </div>
-              <div className={`status-card ${debug?.isYawning ? "bad" : debug?.isDrowsy ? "warning" : "good"}`}>
-                <div className="card-icon">{debug?.isYawning ? "😴" : debug?.isDrowsy ? "😪" : "😊"}</div>
-                <div className="card-label">{debug?.isDrowsy ? "Drowsy" : debug?.isYawning ? "Yawning" : "Alert"}</div>
+              <div className={`status-card ${debug?.eyesClosed || debug?.isYawning ? "bad" : debug?.isDrowsy || debug?.eyesDroopy ? "warning" : "good"}`}>
+                <div className="card-icon">{debug?.eyesClosed ? "😴" : debug?.isYawning ? "🥱" : debug?.eyesDroopy ? "😪" : "😊"}</div>
+                <div className="card-label">{debug?.eyesClosed ? "Eyes Closed" : debug?.isDrowsy ? "Drowsy" : debug?.isYawning ? "Yawning" : debug?.eyesDroopy ? "Droopy" : "Alert"}</div>
               </div>
             </div>
 
@@ -590,6 +594,14 @@ export function PostureMonitor() {
               <div className="stat-group">
                 <div className="stat-group-title">Alertness</div>
                 <div className="stat-row">
+                  <span>Eyes</span>
+                  <strong className={debug?.eyesClosed ? "bad" : debug?.eyesDroopy ? "warning" : "good"}>{eyeLabel}</strong>
+                </div>
+                <div className="stat-row">
+                  <span>Eye Ratio (EAR)</span>
+                  <strong className={debug?.eyesDroopy ? "warning" : ""}>{earLabel}</strong>
+                </div>
+                <div className="stat-row">
                   <span>Yawning</span>
                   <strong className={debug?.isYawning ? "bad" : ""}>{yawnLabel}</strong>
                 </div>
@@ -614,7 +626,7 @@ export function PostureMonitor() {
                   <strong>{handsLabel}</strong>
                 </div>
                 <div className="stat-row">
-                  <span>Hands Up</span>
+                <span>Hands Up</span>
                   <strong className={debug?.handsUp ? "good" : ""}>{handsUpLabel}</strong>
                 </div>
                 <div className="stat-row">
@@ -627,20 +639,20 @@ export function PostureMonitor() {
                 <div className="stat-group-title">Head Angles</div>
                 <div className="angles-grid">
                   <div className="angle-item">
-                    <span>Yaw</span>
-                    <strong>{formatAngle(debug?.yaw ?? null)}</strong>
+                <span>Yaw</span>
+                <strong>{formatAngle(debug?.yaw ?? null)}</strong>
                     {debug?.yawDelta != null && <small>Δ {formatAngle(debug.yawDelta)}</small>}
                   </div>
                   <div className="angle-item">
-                    <span>Pitch</span>
-                    <strong>{formatAngle(debug?.pitch ?? null)}</strong>
+                <span>Pitch</span>
+                <strong>{formatAngle(debug?.pitch ?? null)}</strong>
                     {debug?.pitchDelta != null && <small>Δ {formatAngle(debug.pitchDelta)}</small>}
                   </div>
                   <div className="angle-item">
-                    <span>Roll</span>
-                    <strong>{formatAngle(debug?.roll ?? null)}</strong>
+                <span>Roll</span>
+                <strong>{formatAngle(debug?.roll ?? null)}</strong>
                     {debug?.rollDelta != null && <small>Δ {formatAngle(debug.rollDelta)}</small>}
-                  </div>
+              </div>
                 </div>
               </div>
             </div>
@@ -796,6 +808,20 @@ export function PostureMonitor() {
         .tracking-corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
         .tracking-corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
         .tracking-corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+        .eyes-closed-indicator {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(239, 68, 68, 0.95);
+          color: #fff;
+          padding: 10px 20px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 1rem;
+          animation: pulse 0.6s infinite;
+          z-index: 10;
+        }
         .yawn-indicator {
           position: absolute;
           top: 50%;
@@ -808,6 +834,19 @@ export function PostureMonitor() {
           font-weight: 700;
           font-size: 0.9rem;
           animation: pulse 1s infinite;
+        }
+        .droopy-indicator {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(249, 115, 22, 0.9);
+          color: #fff;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 0.85rem;
+          animation: pulse 1.2s infinite;
         }
         .drowsy-indicator {
           position: absolute;
