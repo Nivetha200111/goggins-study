@@ -4,6 +4,45 @@ let currentMood = "happy";
 let sessionActive = false;
 let speechTimeout = null;
 let apologyOpen = false;
+let lastSentUrl = null;
+let contentSendTimeout = null;
+
+// Send page content for analysis
+function sendPageContent() {
+  if (!sessionActive) return;
+  
+  const url = window.location.href;
+  if (url === lastSentUrl) return;
+  lastSentUrl = url;
+
+  // Extract main text content
+  const mainContent = document.querySelector('main, article, [role="main"], .content, #content') || document.body;
+  const text = mainContent?.innerText?.slice(0, 5000) || '';
+  
+  // Send to app via postMessage (for same-origin) and chrome.runtime
+  const message = {
+    type: "FOCUS_PAGE_CONTENT",
+    url: url,
+    title: document.title,
+    text: text,
+  };
+
+  // Send to parent window (if in iframe or for same-origin communication)
+  try {
+    window.postMessage(message, "*");
+  } catch (e) {}
+
+  // Send to background script to relay to app
+  try {
+    chrome.runtime.sendMessage({ ...message, type: "PAGE_CONTENT" });
+  } catch (e) {}
+}
+
+// Debounced content sender
+function scheduleContentSend() {
+  if (contentSendTimeout) clearTimeout(contentSendTimeout);
+  contentSendTimeout = setTimeout(sendPageContent, 1500);
+}
 
 const DIALOGUES = {
   happy: [
@@ -71,6 +110,7 @@ function updateMascot(mood, isActive) {
   if (!mascot) createMascot();
 
   currentMood = mood;
+  const wasActive = sessionActive;
   sessionActive = isActive;
 
   mascot.className = "";
@@ -82,6 +122,11 @@ function updateMascot(mood, isActive) {
 
   if (mood === "demon" && !apologyOpen) {
     showApologyPrompt();
+  }
+
+  // Send page content when session becomes active
+  if (isActive && !wasActive) {
+    scheduleContentSend();
   }
 }
 
@@ -177,3 +222,27 @@ chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
 });
 
 createMascot();
+
+// Send content on page load and navigation
+if (document.readyState === 'complete') {
+  scheduleContentSend();
+} else {
+  window.addEventListener('load', scheduleContentSend);
+}
+
+// Detect SPA navigation
+let lastUrl = location.href;
+new MutationObserver(() => {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href;
+    lastSentUrl = null;
+    scheduleContentSend();
+  }
+}).observe(document, { subtree: true, childList: true });
+
+// Also send on visibility change (tab switch back)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && sessionActive) {
+    scheduleContentSend();
+  }
+});

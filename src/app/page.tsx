@@ -8,6 +8,7 @@ import { Companion } from "@/components/Companion/Companion";
 import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
 import { PostureMonitor } from "@/components/PostureMonitor/PostureMonitor";
+import { StudyIntelligence } from "@/components/Quiz/StudyIntelligence";
 import { getUser } from "@/lib/supabase";
 
 interface User {
@@ -264,6 +265,7 @@ export default function Home() {
 
       <Companion />
       <PostureMonitor />
+      <StudyIntelligence />
       <DemonOverlay />
 
       <style jsx>{`
