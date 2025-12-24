@@ -411,7 +411,8 @@ export function PostureMonitor() {
   const yawnLabel = debug?.isYawning ? "😴 Yes" : "No";
   const yawnCountLabel = debug?.yawnCount ?? 0;
   const eyeLabel = debug?.eyesClosed ? "😴 Closed" : debug?.eyesDroopy ? "😪 Droopy" : "👁️ Open";
-  const earLabel = debug?.eyeAspectRatio !== null ? debug.eyeAspectRatio.toFixed(2) : "--";
+  const earValue = debug?.eyeAspectRatio;
+  const earLabel = earValue != null ? earValue.toFixed(2) : "--";
   const drowsyLabel = debug?.isDrowsy ? "⚠️ Drowsy!" : "Alert";
   const calibrationLabel =
     debug?.status === "calibrating"
