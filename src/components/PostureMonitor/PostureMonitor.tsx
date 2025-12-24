@@ -43,14 +43,14 @@ export function PostureMonitor() {
     }
   }, [stream, isPoppedOut]);
 
-  // Update popup window content
+  // Update popup/PiP window content
   useEffect(() => {
     if (!isPoppedOut || !popupRef.current || popupRef.current.closed) return;
     
     const popup = popupRef.current;
     const doc = popup.document;
     
-    // Update status values
+    // Get elements (works for both PiP and popup)
     const statusEl = doc.getElementById("status");
     const faceEl = doc.getElementById("face");
     const postureEl = doc.getElementById("posture");
@@ -58,43 +58,95 @@ export function PostureMonitor() {
     const downEl = doc.getElementById("down");
     const phoneEl = doc.getElementById("phone");
     const handsEl = doc.getElementById("hands");
-    const handsUpEl = doc.getElementById("handsUp");
-    const moodEl = doc.getElementById("mood");
-    const yawEl = doc.getElementById("yaw");
-    const pitchEl = doc.getElementById("pitch");
-    const rollEl = doc.getElementById("roll");
-    const dyEl = doc.getElementById("dy");
-    const dpEl = doc.getElementById("dp");
-    const drEl = doc.getElementById("dr");
+    const eyesEl = doc.getElementById("eyes");
+    const yawnEl = doc.getElementById("yawn");
     const warningEl = doc.getElementById("warning");
-    const calibrationEl = doc.getElementById("calibration");
 
-    if (statusEl) statusEl.textContent = STATUS_LABELS[debug?.status ?? "inactive"] ?? debug?.status ?? "inactive";
-    if (faceEl) faceEl.textContent = debug?.hasFace ? "Yes" : "No";
-    if (postureEl) postureEl.textContent = debug?.isSittingStraight === null ? "--" : debug?.isSittingStraight ? "Straight" : "Slouching";
-    if (gazeEl) gazeEl.textContent = debug?.isLookingForward === null ? "--" : debug?.isLookingForward ? "On screen" : "Away";
-    if (downEl) downEl.textContent = debug?.isLookingDown === null ? "--" : debug?.isLookingDown ? "Yes" : "No";
-    if (phoneEl) phoneEl.textContent = debug?.hasPhone ? "Yes" : "No";
-    if (handsEl) handsEl.textContent = debug ? String(debug.handsDetected) : "--";
-    if (handsUpEl) handsUpEl.textContent = debug?.handsUp === null ? "--" : debug?.handsUp ? "Yes" : "No";
-    if (moodEl) {
-      moodEl.textContent = mood === "demon" ? "INFERNAL" : mood.toUpperCase();
-      moodEl.className = `mood-pill ${mood}`;
+    // Status with color coding
+    const statusText = STATUS_LABELS[debug?.status ?? "inactive"] ?? debug?.status ?? "inactive";
+    if (statusEl) {
+      statusEl.textContent = statusText;
+      statusEl.className = `pill ${debug?.status === "tracking" ? "good" : "warn"}`;
     }
-    if (yawEl) yawEl.textContent = formatAngle(debug?.yaw ?? null);
-    if (pitchEl) pitchEl.textContent = formatAngle(debug?.pitch ?? null);
-    if (rollEl) rollEl.textContent = formatAngle(debug?.roll ?? null);
-    if (dyEl) dyEl.textContent = formatAngle(debug?.yawDelta ?? null);
-    if (dpEl) dpEl.textContent = formatAngle(debug?.pitchDelta ?? null);
-    if (drEl) drEl.textContent = formatAngle(debug?.rollDelta ?? null);
-    if (warningEl) warningEl.style.display = debug?.phonePenaltyActive ? "block" : "none";
-    if (calibrationEl) {
-      calibrationEl.style.display = debug?.status === "calibrating" ? "block" : "none";
-      calibrationEl.textContent = `Calibrating ${debug?.calibrationFrames ?? 0}/${debug?.calibrationTarget ?? 12}`;
+    
+    // Face
+    if (faceEl) {
+      faceEl.textContent = debug?.hasFace ? "✓" : "✗";
+      faceEl.className = debug?.hasFace ? "good" : "bad";
     }
-
-    // Update body class for mood
-    doc.body.className = `mood-${mood}`;
+    
+    // Posture (for PiP overlay pill format)
+    if (postureEl) {
+      const isGood = debug?.isSittingStraight ?? true;
+      if (postureEl.classList.contains("pill")) {
+        postureEl.textContent = `Posture: ${isGood ? "✓" : "⚠️"}`;
+        postureEl.className = `pill ${isGood ? "good" : "bad"}`;
+      } else {
+        postureEl.textContent = debug?.isSittingStraight === null ? "--" : isGood ? "✓" : "Slouch";
+        postureEl.className = isGood ? "" : "bad";
+      }
+    }
+    
+    // Gaze
+    if (gazeEl) {
+      const isGood = debug?.isLookingForward ?? true;
+      if (gazeEl.classList.contains("pill")) {
+        gazeEl.textContent = `Gaze: ${isGood ? "✓" : "⚠️"}`;
+        gazeEl.className = `pill ${isGood ? "good" : "bad"}`;
+      } else {
+        gazeEl.textContent = debug?.isLookingForward === null ? "--" : isGood ? "✓" : "Away";
+        gazeEl.className = isGood ? "" : "bad";
+      }
+    }
+    
+    // Looking Down
+    if (downEl) {
+      const isBad = debug?.isLookingDown ?? false;
+      downEl.textContent = debug?.isLookingDown === null ? "--" : isBad ? "Yes" : "✓";
+      downEl.className = isBad ? "bad" : "";
+    }
+    
+    // Phone
+    if (phoneEl) {
+      const isBad = debug?.hasPhone ?? false;
+      phoneEl.textContent = isBad ? "⚠️ Yes" : "✓";
+      phoneEl.className = isBad ? "bad" : "good";
+    }
+    
+    // Hands
+    if (handsEl) {
+      const count = debug?.handsDetected ?? 0;
+      handsEl.textContent = count > 0 ? `${count}` : "--";
+    }
+    
+    // Eyes (drowsiness)
+    if (eyesEl) {
+      const isClosed = debug?.eyesClosed ?? false;
+      const isDroopy = debug?.eyesDroopy ?? false;
+      eyesEl.textContent = isClosed ? "😴" : isDroopy ? "😪" : "👁️";
+      eyesEl.className = isClosed ? "bad" : isDroopy ? "warn" : "";
+    }
+    
+    // Yawn
+    if (yawnEl) {
+      const isYawning = debug?.isYawning ?? false;
+      const count = debug?.yawnCount ?? 0;
+      yawnEl.textContent = isYawning ? "😴" : count > 0 ? `${count}` : "✓";
+      yawnEl.className = isYawning || count >= 2 ? "bad" : "";
+    }
+    
+    // Warning bar
+    if (warningEl) {
+      const hasWarning = debug?.phonePenaltyActive || debug?.isDrowsy || (debug?.isLookingDown && !debug?.isCalibrated === false);
+      warningEl.className = `warning-bar ${hasWarning ? "show" : ""}`;
+      if (debug?.phonePenaltyActive) {
+        warningEl.textContent = "📱 PHONE DETECTED - Put it away!";
+      } else if (debug?.isDrowsy) {
+        warningEl.textContent = "😴 DROWSY - Take a break or wake up!";
+      } else if (debug?.isLookingDown) {
+        warningEl.textContent = "👇 LOOKING DOWN - Eyes up!";
+      }
+    }
   }, [debug, mood, isPoppedOut]);
 
   // Set up video in popup
@@ -109,20 +161,184 @@ export function PostureMonitor() {
     }
   }, [stream, isPoppedOut]);
 
-  const handlePopOut = useCallback(() => {
+  // Try Picture-in-Picture first (stays on top), fallback to popup
+  const handlePopOut = useCallback(async () => {
+    // If already popped out, bring to front
     if (isPoppedOut && popupRef.current && !popupRef.current.closed) {
       popupRef.current.focus();
       return;
     }
 
+    // Try Document Picture-in-Picture API (Chrome 116+) - TRUE always-on-top
+    // @ts-expect-error - documentPictureInPicture is experimental
+    if (window.documentPictureInPicture) {
+      try {
+        // @ts-expect-error - experimental API
+        const pipWindow = await window.documentPictureInPicture.requestWindow({
+          width: 380,
+          height: 520,
+        });
+
+        popupRef.current = pipWindow;
+        setIsPoppedOut(true);
+
+        // Copy styles and create content
+        pipWindow.document.head.innerHTML = `
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            :root {
+              --bg: #0a0506;
+              --surface: rgba(16, 9, 10, 0.98);
+              --edge: rgba(139, 69, 69, 0.3);
+              --foreground: #f7e7d6;
+              --muted: rgba(247, 231, 214, 0.6);
+              --accent: #dc2626;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background: linear-gradient(180deg, #1a0506 0%, #0a0203 100%);
+              color: var(--foreground);
+              min-height: 100vh;
+              padding: 12px;
+              overflow: hidden;
+            }
+            .container {
+              background: var(--surface);
+              border: 1px solid var(--edge);
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            .header {
+              padding: 10px 14px;
+              border-bottom: 1px solid var(--edge);
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              font-weight: 700;
+              font-size: 0.9rem;
+              background: rgba(0,0,0,0.3);
+            }
+            .video-wrap {
+              position: relative;
+              width: 100%;
+              aspect-ratio: 4/3;
+              background: #050406;
+            }
+            video {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              transform: scaleX(-1);
+            }
+            .overlay {
+              position: absolute;
+              top: 8px;
+              left: 8px;
+              right: 8px;
+              display: flex;
+              justify-content: space-between;
+              pointer-events: none;
+            }
+            .pill {
+              padding: 4px 10px;
+              border-radius: 999px;
+              font-size: 0.65rem;
+              font-weight: 700;
+              background: rgba(0,0,0,0.7);
+              backdrop-filter: blur(4px);
+            }
+            .pill.good { color: #4ade80; }
+            .pill.bad { color: #f87171; }
+            .pill.warn { color: #fbbf24; }
+            .stats {
+              padding: 10px;
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+              font-size: 0.75rem;
+            }
+            .stat {
+              display: flex;
+              justify-content: space-between;
+              padding: 6px 10px;
+              background: rgba(0,0,0,0.4);
+              border-radius: 6px;
+            }
+            .stat span { color: var(--muted); }
+            .stat strong { color: var(--foreground); }
+            .stat strong.good { color: #4ade80; }
+            .stat strong.bad { color: #f87171; }
+            .warning-bar {
+              padding: 8px;
+              background: rgba(220, 38, 38, 0.2);
+              border-top: 1px solid rgba(220, 38, 38, 0.4);
+              color: #f87171;
+              font-weight: 600;
+              font-size: 0.75rem;
+              text-align: center;
+              display: none;
+            }
+            .warning-bar.show { display: block; animation: pulse 1s infinite; }
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.6; }
+            }
+          </style>
+        `;
+
+        pipWindow.document.body.innerHTML = `
+          <div class="container">
+            <div class="header">
+              <span>👁️ Infernal Eye</span>
+              <span class="pill" id="status">--</span>
+            </div>
+            <div class="video-wrap">
+              <video id="video" autoplay playsinline muted></video>
+              <div class="overlay">
+                <span class="pill" id="posture">Posture: --</span>
+                <span class="pill" id="gaze">Gaze: --</span>
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat"><span>Face</span><strong id="face">--</strong></div>
+              <div class="stat"><span>Phone</span><strong id="phone">--</strong></div>
+              <div class="stat"><span>Down</span><strong id="down">--</strong></div>
+              <div class="stat"><span>Hands</span><strong id="hands">--</strong></div>
+              <div class="stat"><span>Eyes</span><strong id="eyes">--</strong></div>
+              <div class="stat"><span>Yawn</span><strong id="yawn">--</strong></div>
+            </div>
+            <div class="warning-bar" id="warning">⚠️ DISTRACTION DETECTED</div>
+          </div>
+        `;
+
+        // Set video stream
+        const video = pipWindow.document.getElementById("video") as HTMLVideoElement;
+        if (video && stream) {
+          video.srcObject = stream;
+          video.play().catch(() => {});
+        }
+
+        // Handle PiP close
+        pipWindow.addEventListener("pagehide", () => {
+          setIsPoppedOut(false);
+          popupRef.current = null;
+        });
+
+        return;
+      } catch (e) {
+        console.log("Document PiP failed, falling back to popup:", e);
+      }
+    }
+
+    // Fallback: Regular popup (won't stay on top but better than nothing)
     const popup = window.open(
       "",
       "PostureMonitor",
-      "width=420,height=650,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no"
+      "width=400,height=580,resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no,alwaysRaised=yes"
     );
     
     if (!popup) {
-      alert("Please allow popups for this site");
+      alert("Please allow popups for this site to use pop-out mode");
       return;
     }
 
@@ -142,46 +358,42 @@ export function PostureMonitor() {
             --edge: rgba(139, 69, 69, 0.25);
             --foreground: #f7e7d6;
             --muted: rgba(247, 231, 214, 0.6);
-            --accent: #dc2626;
           }
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
+            background: linear-gradient(180deg, #1a0506 0%, #0a0203 100%);
             color: var(--foreground);
             min-height: 100vh;
-            padding: 16px;
+            padding: 12px;
           }
-          body.mood-demon { background: linear-gradient(180deg, #1a0506 0%, #0a0203 100%); }
-          body.mood-angry { background: linear-gradient(180deg, #1a0808 0%, #0a0303 100%); }
-          body.mood-suspicious { background: linear-gradient(180deg, #1a0f06 0%, #0a0603 100%); }
-          body.mood-happy { background: linear-gradient(180deg, #0f1a0a 0%, #050a03 100%); }
-          
+          .tip {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
+            color: #fbbf24;
+          }
           .container {
             background: var(--surface);
             border: 1px solid var(--edge);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
-            backdrop-filter: blur(10px);
           }
           .header {
-            padding: 14px 16px;
+            padding: 12px 14px;
             border-bottom: 1px solid var(--edge);
             display: flex;
             align-items: center;
             justify-content: space-between;
             font-weight: 700;
-            font-size: 1rem;
           }
-          .header-icon { font-size: 1.2rem; margin-right: 8px; }
-          .body { padding: 16px; display: grid; gap: 14px; }
-          
-          .video-container {
+          .video-wrap {
+            position: relative;
             width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
+            aspect-ratio: 4/3;
             background: #050406;
-            aspect-ratio: 4 / 3;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
           }
           video {
             width: 100%;
@@ -189,113 +401,55 @@ export function PostureMonitor() {
             object-fit: cover;
             transform: scaleX(-1);
           }
-          
-          .mood-pill {
-            display: inline-flex;
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            background: #2a1516;
-            color: var(--foreground);
-          }
-          .mood-pill.happy { background: #fef08a; color: #854d0e; }
-          .mood-pill.suspicious { background: #fdba74; color: #9a3412; }
-          .mood-pill.angry { background: #fecaca; color: #991b1b; }
-          .mood-pill.demon { background: #1a0f10; color: #f87171; animation: pulse 2s infinite; }
-          
-          @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 10px rgba(248, 113, 113, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(248, 113, 113, 0.8); }
-          }
-          
-          .stats { display: grid; gap: 8px; }
-          .stat {
+          .stats {
+            padding: 12px;
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 0.8rem;
+          }
+          .stat {
+            display: flex;
+            justify-content: space-between;
             padding: 8px 12px;
             background: rgba(0,0,0,0.3);
             border-radius: 8px;
-            font-size: 0.85rem;
           }
           .stat span { color: var(--muted); }
           .stat strong { color: var(--foreground); }
-          
-          .angles-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-          }
-          .angle {
-            text-align: center;
-            padding: 8px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            font-size: 0.75rem;
-          }
-          .angle span { display: block; color: var(--muted); margin-bottom: 4px; }
-          .angle strong { color: var(--foreground); }
-          
-          .warning {
-            padding: 12px;
-            background: rgba(249, 115, 22, 0.15);
-            border: 1px solid rgba(249, 115, 22, 0.3);
-            border-radius: 8px;
-            color: #f97316;
-            font-weight: 600;
-            text-align: center;
-            animation: warningPulse 1.5s infinite;
-          }
-          @keyframes warningPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-          
-          .calibration {
+          .warning-bar {
             padding: 10px;
-            background: rgba(249, 115, 22, 0.1);
-            border-radius: 8px;
-            color: #f97316;
+            background: rgba(220, 38, 38, 0.2);
+            border-top: 1px solid rgba(220, 38, 38, 0.4);
+            color: #f87171;
             font-weight: 600;
             text-align: center;
+            display: none;
           }
+          .warning-bar.show { display: block; }
         </style>
       </head>
-      <body class="mood-${mood}">
+      <body>
+        <div class="tip">💡 Tip: Use Chrome for always-on-top Picture-in-Picture mode</div>
         <div class="container">
           <div class="header">
-            <span><span class="header-icon">👁️</span>Infernal Eye</span>
-            <span id="mood" class="mood-pill ${mood}">${mood === "demon" ? "INFERNAL" : mood.toUpperCase()}</span>
+            <span>👁️ Infernal Eye</span>
+            <span id="status">--</span>
           </div>
-          <div class="body">
-            <div class="video-container">
-              <video id="video" autoplay playsinline muted></video>
-            </div>
-            <div id="calibration" class="calibration" style="display:none;">Calibrating...</div>
-            <div id="warning" class="warning" style="display:none;">⚠️ PHONE DETECTED - Put it away & raise both hands!</div>
-            <div class="stats">
-              <div class="stat"><span>Status</span><strong id="status">--</strong></div>
-              <div class="stat"><span>Face Detected</span><strong id="face">--</strong></div>
-              <div class="stat"><span>Posture</span><strong id="posture">--</strong></div>
-              <div class="stat"><span>Gaze</span><strong id="gaze">--</strong></div>
-              <div class="stat"><span>Looking Down</span><strong id="down">--</strong></div>
-              <div class="stat"><span>Phone Detected</span><strong id="phone">--</strong></div>
-              <div class="stat"><span>Hands Visible</span><strong id="hands">--</strong></div>
-              <div class="stat"><span>Hands Up</span><strong id="handsUp">--</strong></div>
-            </div>
-            <div class="angles-row">
-              <div class="angle"><span>Yaw</span><strong id="yaw">--</strong></div>
-              <div class="angle"><span>Pitch</span><strong id="pitch">--</strong></div>
-              <div class="angle"><span>Roll</span><strong id="roll">--</strong></div>
-            </div>
-            <div class="angles-row">
-              <div class="angle"><span>ΔYaw</span><strong id="dy">--</strong></div>
-              <div class="angle"><span>ΔPitch</span><strong id="dp">--</strong></div>
-              <div class="angle"><span>ΔRoll</span><strong id="dr">--</strong></div>
-            </div>
+          <div class="video-wrap">
+            <video id="video" autoplay playsinline muted></video>
           </div>
+          <div class="stats">
+            <div class="stat"><span>Face</span><strong id="face">--</strong></div>
+            <div class="stat"><span>Posture</span><strong id="posture">--</strong></div>
+            <div class="stat"><span>Gaze</span><strong id="gaze">--</strong></div>
+            <div class="stat"><span>Down</span><strong id="down">--</strong></div>
+            <div class="stat"><span>Phone</span><strong id="phone">--</strong></div>
+            <div class="stat"><span>Hands</span><strong id="hands">--</strong></div>
+            <div class="stat"><span>Eyes</span><strong id="eyes">--</strong></div>
+            <div class="stat"><span>Yawn</span><strong id="yawn">--</strong></div>
+          </div>
+          <div class="warning-bar" id="warning">⚠️ DISTRACTION DETECTED</div>
         </div>
       </body>
       </html>
