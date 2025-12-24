@@ -12,9 +12,6 @@ interface UseModel {
   embed: (sentences: string[]) => Promise<{ arraySync: () => number[][] }>;
 }
 
-const MODEL_URL =
-  "https://tfhub.dev/google/tfjs-model/universal-sentence-encoder-lite/1/default/1";
-
 // Singleton model instance
 let modelInstance: UseModel | null = null;
 let modelLoading: Promise<UseModel> | null = null;
@@ -37,6 +34,53 @@ async function loadModel(): Promise<UseModel> {
   })();
 
   return modelLoading;
+}
+
+// Extract key concepts from text using simple NLP heuristics
+function extractConcepts(text: string): { term: string; definition: string }[] {
+  const concepts: { term: string; definition: string }[] = [];
+  
+  // Pattern matching for definitions
+  const definitionPatterns = [
+    /(?:^|\. )([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*)\s+(?:is|are|refers to|means|defined as)\s+([^.]+)/gi,
+    /(?:^|\. )(?:The\s+)?([A-Z][a-z]+(?:\s+[a-z]+)*)\s*[:]\s*([^.]+)/gi,
+    /([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*)\s*\(([^)]+)\)/gi,
+  ];
+
+  for (const pattern of definitionPatterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const term = match[1].trim();
+      const definition = match[2].trim();
+      
+      // Filter out noise
+      if (term.length > 2 && term.length < 50 && definition.length > 10 && definition.length < 200) {
+        // Check if not already added
+        if (!concepts.find((c) => c.term.toLowerCase() === term.toLowerCase())) {
+          concepts.push({ term, definition });
+        }
+      }
+    }
+  }
+
+  // Also extract capitalized terms that appear frequently
+  const words = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) || [];
+  const wordFreq = new Map<string, number>();
+  
+  for (const word of words) {
+    if (word.length > 3) {
+      wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+    }
+  }
+
+  // Add frequent terms without definitions yet
+  for (const [word, freq] of wordFreq) {
+    if (freq >= 3 && !concepts.find((c) => c.term.toLowerCase() === word.toLowerCase())) {
+      concepts.push({ term: word, definition: `Key concept mentioned ${freq} times` });
+    }
+  }
+
+  return concepts.slice(0, 10); // Limit to 10 concepts per page
 }
 
 // Simple text extraction from HTML
@@ -142,11 +186,18 @@ export function useContentAnalyzer() {
     isAnalyzing,
     relevanceThreshold,
     currentSession,
+    addFeedback,
+    addConcept,
+    computeRelevance,
+    learningProgress,
+    positiveExamples,
+    negativeExamples,
   } = useStudyIntelligenceStore();
 
   const { isSessionActive, activeTabId } = useGameStore();
   const modelRef = useRef<UseModel | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastAnalyzedUrl, setLastAnalyzedUrl] = useState<string | null>(null);
 
   // Load model on mount
   useEffect(() => {
@@ -180,11 +231,12 @@ export function useContentAnalyzer() {
     []
   );
 
-  // Analyze page content
+  // Analyze page content with enhanced learning
   const analyzeContent = useCallback(
     async (content: PageContent): Promise<AnalysisResult> => {
       setAnalyzing(true);
       setError(null);
+      setLastAnalyzedUrl(content.url);
 
       try {
         const text =
@@ -203,16 +255,20 @@ export function useContentAnalyzer() {
         // Compute embedding
         const embedding = await computeEmbedding(text);
 
-        // Calculate relevance if we have a topic model
-        let relevanceScore = 0.5; // Default neutral
-        if (topicCentroid && topicConfidence > 0.2) {
-          relevanceScore = cosineSimilarity(embedding, topicCentroid);
-          // Adjust score based on confidence
-          relevanceScore = 0.5 + (relevanceScore - 0.5) * topicConfidence;
+        // Use enhanced relevance computation with positive/negative examples
+        let relevanceScore = 0.5;
+        if (positiveExamples.length > 0 || (topicCentroid && topicConfidence > 0.15)) {
+          relevanceScore = computeRelevance(embedding);
         }
 
         const isRelevant = relevanceScore >= relevanceThreshold;
         const keySentences = extractKeySentences(text);
+        
+        // Extract and store concepts
+        const concepts = extractConcepts(text);
+        for (const concept of concepts) {
+          addConcept(concept.term, concept.definition);
+        }
 
         // Store relevance score
         setRelevanceScore(content.url, relevanceScore);
@@ -225,10 +281,11 @@ export function useContentAnalyzer() {
             text: text.slice(0, 2000),
             embedding,
             tabId: activeTabId,
+            concepts: concepts.map((c) => c.term),
           });
 
-          // Update topic model with this content
-          updateTopicModel(embedding);
+          // Update topic model with positive example
+          updateTopicModel(embedding, true);
         }
 
         return {
@@ -248,18 +305,21 @@ export function useContentAnalyzer() {
     [
       topicCentroid,
       topicConfidence,
+      positiveExamples,
       relevanceThreshold,
       isSessionActive,
       activeTabId,
       computeEmbedding,
+      computeRelevance,
       setAnalyzing,
       setRelevanceScore,
       addStudiedContent,
       updateTopicModel,
+      addConcept,
     ]
   );
 
-  // Mark current page as study material (user feedback)
+  // Mark current page as study material (positive user feedback)
   const markAsStudyMaterial = useCallback(
     async (content: PageContent) => {
       if (!activeTabId) return;
@@ -271,6 +331,15 @@ export function useContentAnalyzer() {
           (content.html ? extractTextFromHtml(content.html) : "");
         const embedding = await computeEmbedding(text);
 
+        // Add positive feedback
+        addFeedback(content.url, true, embedding);
+
+        // Extract and store concepts
+        const concepts = extractConcepts(text);
+        for (const concept of concepts) {
+          addConcept(concept.term, concept.definition);
+        }
+
         // Add to studied content
         addStudiedContent({
           url: content.url,
@@ -278,10 +347,11 @@ export function useContentAnalyzer() {
           text: text.slice(0, 2000),
           embedding,
           tabId: activeTabId,
+          concepts: concepts.map((c) => c.term),
         });
 
-        // Strongly update topic model
-        updateTopicModel(embedding);
+        // Strongly update topic model with positive example
+        updateTopicModel(embedding, true);
 
         // Set high relevance
         setRelevanceScore(content.url, 1.0);
@@ -296,13 +366,48 @@ export function useContentAnalyzer() {
       updateTopicModel,
       setRelevanceScore,
       setAnalyzing,
+      addFeedback,
+      addConcept,
     ]
   );
 
-  // Mark as distraction (negative feedback)
+  // Mark as distraction (negative user feedback)
   const markAsDistraction = useCallback(
-    (url: string) => {
-      setRelevanceScore(url, 0);
+    async (content: PageContent) => {
+      setAnalyzing(true);
+      try {
+        const text =
+          content.text ||
+          (content.html ? extractTextFromHtml(content.html) : "");
+        
+        let embedding: number[] | undefined;
+        try {
+          embedding = await computeEmbedding(text);
+        } catch {
+          // If embedding fails, still record feedback
+        }
+
+        // Add negative feedback
+        addFeedback(content.url, false, embedding);
+
+        // Update topic model with negative signal
+        if (embedding) {
+          updateTopicModel(embedding, false);
+        }
+
+        // Set low relevance
+        setRelevanceScore(content.url, 0);
+      } finally {
+        setAnalyzing(false);
+      }
+    },
+    [computeEmbedding, addFeedback, updateTopicModel, setRelevanceScore, setAnalyzing]
+  );
+
+  // Quick feedback without full analysis
+  const quickFeedback = useCallback(
+    (url: string, isPositive: boolean) => {
+      setRelevanceScore(url, isPositive ? 1.0 : 0);
     },
     [setRelevanceScore]
   );
@@ -311,11 +416,14 @@ export function useContentAnalyzer() {
     analyzeContent,
     markAsStudyMaterial,
     markAsDistraction,
+    quickFeedback,
     computeEmbedding,
     isModelLoaded,
     isAnalyzing,
     error,
     topicConfidence,
+    learningProgress,
+    lastAnalyzedUrl,
   };
 }
 
