@@ -137,14 +137,12 @@ export function PostureMonitor() {
     
     // Warning bar
     if (warningEl) {
-      const hasWarning = debug?.phonePenaltyActive || debug?.isDrowsy || (debug?.isLookingDown && !debug?.isCalibrated === false);
+      const hasWarning = debug?.phonePenaltyActive || debug?.isDrowsy;
       warningEl.className = `warning-bar ${hasWarning ? "show" : ""}`;
       if (debug?.phonePenaltyActive) {
         warningEl.textContent = "📱 PHONE DETECTED - Put it away!";
       } else if (debug?.isDrowsy) {
         warningEl.textContent = "😴 DROWSY - Take a break or wake up!";
-      } else if (debug?.isLookingDown) {
-        warningEl.textContent = "👇 LOOKING DOWN - Eyes up!";
       }
     }
   }, [debug, mood, isPoppedOut]);
