@@ -25,6 +25,11 @@ const DROWSY_YAWN_COUNT = 2;
 const EYE_DROWSY_THRESHOLD = 0.18;
 const EYE_CLOSED_THRESHOLD = 0.12;
 
+const OBJECT_DETECT_INTERVAL_MS = 800;
+const OBJECT_DETECT_ACTIVE_INTERVAL_MS = 400;
+const HAND_DETECT_INTERVAL_MS = 900;
+const HAND_DETECT_ACTIVE_INTERVAL_MS = 250;
+
 type AlertType = "down" | "gaze" | "posture" | "yawn";
 
 const ALERT_ORDER: AlertType[] = ["yawn", "down", "gaze", "posture"];
