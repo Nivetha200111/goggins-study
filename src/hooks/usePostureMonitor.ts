@@ -336,6 +336,10 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
   const handLandmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number>(0);
+  const lastObjectDetectRef = useRef<number>(0);
+  const lastHandDetectRef = useRef<number>(0);
+  const lastObjectResultRef = useRef<ObjectDetectorResult | null>(null);
+  const lastHandResultRef = useRef<HandLandmarkerResult | null>(null);
 
   const baselineRef = useRef<Baseline | null>(null);
   const calibrationRef = useRef<Baseline[]>([]);
@@ -422,6 +426,10 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
       alertLineIndexRef.current = { down: 0, gaze: 0, posture: 0, yawn: 0 };
       phonePenaltyLineIndexRef.current = 0;
       phoneRepeatLineIndexRef.current = 0;
+      lastObjectDetectRef.current = 0;
+      lastHandDetectRef.current = 0;
+      lastObjectResultRef.current = null;
+      lastHandResultRef.current = null;
       updateDebugState({ ...INITIAL_DEBUG_STATE, status: "inactive" });
     };
 
@@ -553,24 +561,42 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
         }
 
         let faceResult: FaceLandmarkerResult | null = null;
-        let objectResult: ObjectDetectorResult | null = null;
-        let handResult: HandLandmarkerResult | null = null;
+        let objectResult: ObjectDetectorResult | null = lastObjectResultRef.current;
+        let handResult: HandLandmarkerResult | null = lastHandResultRef.current;
         try {
           faceResult = faceLandmarkerRef.current.detectForVideo(
             video,
             performance.now()
           ) as FaceLandmarkerResult;
-          if (objectDetectorRef.current) {
+          const objectInterval = phonePenaltyActiveRef.current
+            ? OBJECT_DETECT_ACTIVE_INTERVAL_MS
+            : OBJECT_DETECT_INTERVAL_MS;
+          if (
+            objectDetectorRef.current &&
+            now - lastObjectDetectRef.current >= objectInterval
+          ) {
             objectResult = objectDetectorRef.current.detectForVideo(
               video,
               performance.now()
             ) as ObjectDetectorResult;
+            lastObjectDetectRef.current = now;
+            lastObjectResultRef.current = objectResult;
           }
-          if (handLandmarkerRef.current) {
+          const hasPhoneNow = hasPhoneDetection(objectResult);
+          const handInterval =
+            phonePenaltyActiveRef.current || hasPhoneNow
+              ? HAND_DETECT_ACTIVE_INTERVAL_MS
+              : HAND_DETECT_INTERVAL_MS;
+          if (
+            handLandmarkerRef.current &&
+            now - lastHandDetectRef.current >= handInterval
+          ) {
             handResult = handLandmarkerRef.current.detectForVideo(
               video,
               performance.now()
             ) as HandLandmarkerResult;
+            lastHandDetectRef.current = now;
+            lastHandResultRef.current = handResult;
           }
         } catch {
           rafRef.current = requestAnimationFrame(detect);
@@ -750,7 +776,8 @@ export function usePostureMonitor(options: PostureMonitorOptions = {}) {
         const nowTime = Date.now();
 
         if (phonePenaltyActiveRef.current) {
-          const clearCondition = !hasPhone && handsUp === true;
+          // Clear if phone is gone AND two hands are visible (don't require them to be "up")
+          const clearCondition = !hasPhone && handsDetected >= 2;
           updateTimer(phoneClearSinceRef, clearCondition);
           if (
             phoneClearSinceRef.current &&
