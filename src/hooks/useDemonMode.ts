@@ -112,6 +112,17 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     clearDriftTimer();
   }, [clearIdleTimer, clearDriftTimer]);
 
+  const triggerTabLeave = useCallback(() => {
+    if (wasHiddenRef.current) return;
+    wasHiddenRef.current = true;
+    clearTimers();
+    if (moodRef.current !== "demon") {
+      setMood("demon");
+      addDistraction();
+    }
+    document.title = "THE DEVIL SEES YOU";
+  }, [addDistraction, clearTimers, setMood]);
+
   const startIdleTimer = useCallback(() => {
     if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) return;
     if (moodRef.current === "demon") return;
@@ -213,14 +224,7 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) return;
 
     if (document.hidden) {
-      wasHiddenRef.current = true;
-      clearTimers();
-      if (onTopicRef.current) {
-        return;
-      }
-      setMood("demon");
-      addDistraction();
-      document.title = "I SEE YOU";
+      triggerTabLeave();
       return;
     }
 
@@ -232,11 +236,22 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     isSessionActive,
     isDemonModeEnabled,
     isMonitoringEnabled,
-    setMood,
-    addDistraction,
-    clearTimers,
     handleActivity,
+    triggerTabLeave,
   ]);
+
+  const handleWindowBlur = useCallback(() => {
+    if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) return;
+    triggerTabLeave();
+  }, [isSessionActive, isDemonModeEnabled, isMonitoringEnabled, triggerTabLeave]);
+
+  const handleWindowFocus = useCallback(() => {
+    if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) return;
+    if (wasHiddenRef.current) {
+      wasHiddenRef.current = false;
+      handleActivity();
+    }
+  }, [isSessionActive, isDemonModeEnabled, isMonitoringEnabled, handleActivity]);
 
   useEffect(() => {
     if (!isSessionActive || !isDemonModeEnabled || !isMonitoringEnabled) {
@@ -276,6 +291,8 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     });
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("focus", handleWindowFocus);
 
     return () => {
       clearTimers();
@@ -283,6 +300,8 @@ export function useDemonMode(config: DemonModeConfig = {}) {
         window.removeEventListener(event, handleActivity);
       });
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   }, [
     isSessionActive,
@@ -290,13 +309,15 @@ export function useDemonMode(config: DemonModeConfig = {}) {
     isMonitoringEnabled,
     handleActivity,
     handleVisibilityChange,
+    handleWindowBlur,
+    handleWindowFocus,
     startIdleTimer,
     clearTimers,
   ]);
 
   useEffect(() => {
     if (mood !== "demon") {
-      document.title = "Focus Companion";
+      document.title = "Infernal Companion";
     }
   }, [mood]);
 
