@@ -71,10 +71,12 @@ Open:
 
 Then:
 
-1. Sign in with your username and invite code.
-2. Create a study subject.
-3. Set a timer.
-4. Start the session.
+1. Sign in with your username.
+2. Leave the access code blank on first login to auto-generate one, or enter an existing code if you already have one.
+3. Save the generated code because it becomes your future login key.
+4. Create a study subject.
+5. Set a timer.
+6. Start the session.
 
 ## Load the Chrome extension
 
