@@ -1,248 +1,301 @@
-console.log("Focus Companion content script loaded");
-let mascot = null;
-let currentMood = "happy";
-let sessionActive = false;
+let overlay = null;
+let overlayState = null;
+let collapsed = false;
 let speechTimeout = null;
-let apologyOpen = false;
-let lastSentUrl = null;
-let contentSendTimeout = null;
+let typingTimeout = null;
+let snapshotTimeout = null;
+let timerInterval = null;
+let lastSnapshotUrl = "";
 
-// Send page content for analysis
-function sendPageContent() {
-  if (!sessionActive) return;
-  
-  const url = window.location.href;
-  if (url === lastSentUrl) return;
-  lastSentUrl = url;
+function formatDuration(totalMs) {
+  const clamped = Math.max(0, totalMs || 0);
+  const totalSeconds = Math.floor(clamped / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-  // Extract main text content
-  const mainContent = document.querySelector('main, article, [role="main"], .content, #content') || document.body;
-  const text = mainContent?.innerText?.slice(0, 5000) || '';
-  
-  // Send to app via postMessage (for same-origin) and chrome.runtime
-  const message = {
-    type: "FOCUS_PAGE_CONTENT",
-    url: url,
-    title: document.title,
-    text: text,
-  };
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
 
-  // Send to parent window (if in iframe or for same-origin communication)
-  try {
-    window.postMessage(message, "*");
-  } catch (e) {}
-
-  // Send to background script to relay to app
-  try {
-    chrome.runtime.sendMessage({ ...message, type: "PAGE_CONTENT" });
-  } catch (e) {}
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Debounced content sender
-function scheduleContentSend() {
-  if (contentSendTimeout) clearTimeout(contentSendTimeout);
-  contentSendTimeout = setTimeout(sendPageContent, 1500);
-}
+function ensureOverlay() {
+  if (overlay) return overlay;
 
-const DIALOGUES = {
-  happy: [
-    "Great job staying focused!",
-    "Keep it up!",
-    "You're doing amazing!",
-    "I'm proud of you!",
-  ],
-  suspicious: [
-    "Hmm... what are you doing?",
-    "This doesn't look like studying...",
-    "Are you sure about this?",
-    "I'm watching you...",
-  ],
-  angry: [
-    "GET BACK TO WORK!",
-    "STOP WASTING TIME!",
-    "THIS IS NOT OKAY!",
-    "I'M GETTING REALLY MAD!",
-  ],
-  demon: [
-    "YOU BETRAYED ME!",
-    "LOOK WHAT YOU'VE DONE!",
-    "APOLOGIZE. NOW.",
-    "I TRUSTED YOU!",
-  ],
-};
-
-function createMascot() {
-  if (mascot) return;
-  console.log("Creating mascot...");
-
-  mascot = document.createElement("div");
-  mascot.id = "focus-companion-mascot";
-  mascot.innerHTML = `
-    <div class="fc-body">
-      <div class="fc-antenna"><div class="fc-antenna-ball"></div></div>
-      <div class="fc-face">
-        <div class="fc-eyes">
-          <div class="fc-eye left"><div class="fc-pupil"></div></div>
-          <div class="fc-eye right"><div class="fc-pupil"></div></div>
+  overlay = document.createElement("div");
+  overlay.id = "focus-agent-overlay";
+  overlay.innerHTML = `
+    <button class="fa-toggle" type="button" aria-label="Collapse timer">-</button>
+    <div class="fa-card">
+      <div class="fa-header">
+        <div>
+          <p class="fa-kicker">Local focus agent</p>
+          <strong class="fa-topic">No session running</strong>
         </div>
-        <div class="fc-mouth"></div>
+        <span class="fa-pill">Idle</span>
       </div>
-      <div class="fc-tentacles">
-        <div class="fc-tentacle t1"></div>
-        <div class="fc-tentacle t2"></div>
-        <div class="fc-tentacle t3"></div>
-        <div class="fc-tentacle t4"></div>
+      <div class="fa-timer">50:00</div>
+      <div class="fa-progress">
+        <div class="fa-progress-fill"></div>
       </div>
+      <p class="fa-status">Waiting for a study timer.</p>
+      <div class="fa-footer">
+        <div class="fa-face" aria-hidden="true">
+          <span class="eye left"></span>
+          <span class="eye right"></span>
+          <span class="mouth"></span>
+        </div>
+        <div class="fa-reason">The overlay will track your session here.</div>
+      </div>
+      <div class="fa-speech"></div>
     </div>
-    <div class="fc-speech"></div>
   `;
 
-  document.body.appendChild(mascot);
-
-  mascot.addEventListener("click", () => {
-    if (currentMood === "demon") {
-      showApologyPrompt();
+  overlay.querySelector(".fa-toggle")?.addEventListener("click", () => {
+    collapsed = !collapsed;
+    overlay.classList.toggle("collapsed", collapsed);
+    const button = overlay.querySelector(".fa-toggle");
+    if (button) {
+      button.textContent = collapsed ? "+" : "-";
+      button.setAttribute("aria-label", collapsed ? "Expand timer" : "Collapse timer");
     }
   });
+
+  document.documentElement.appendChild(overlay);
+  return overlay;
 }
 
-function updateMascot(mood, isActive) {
-  if (!mascot) createMascot();
-
-  currentMood = mood;
-  const wasActive = sessionActive;
-  sessionActive = isActive;
-
-  mascot.className = "";
-  mascot.classList.add(mood);
-
-  mascot.classList.remove("hidden");
-
-  speak(mood);
-
-  if (mood === "demon" && !apologyOpen) {
-    showApologyPrompt();
-  }
-
-  // Send page content when session becomes active
-  if (isActive && !wasActive) {
-    scheduleContentSend();
-  }
-}
-
-function showSpeech(message, yell = false) {
-  if (!mascot) createMascot();
-
-  const speech = mascot.querySelector(".fc-speech");
-  if (!speech) return;
-
-  speech.textContent = message;
-  speech.classList.add("visible");
-
-  if (yell) {
-    speakAloud(message, true);
-  }
-
-  clearTimeout(speechTimeout);
-  speechTimeout = setTimeout(() => {
-    speech.classList.remove("visible");
-  }, 4000);
-}
-
-function speak(mood) {
-  const messages = DIALOGUES[mood];
-  const message = messages[Math.floor(Math.random() * messages.length)];
-  showSpeech(message, mood === "angry" || mood === "demon");
-}
-
-function speakAloud(text, yell = false) {
+function speakAloud(text, yell) {
+  if (!overlayState?.soundEnabled) return;
   if (!("speechSynthesis" in window)) return;
 
   window.speechSynthesis.cancel();
-
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = yell ? 1.3 : 1.0;
-  utterance.pitch = yell ? 1.4 : 1.0;
-  utterance.volume = yell ? 1.0 : 0.8;
-
+  utterance.rate = yell ? 1.14 : 1;
+  utterance.pitch = yell ? 0.88 : 1;
+  utterance.volume = yell ? 1 : 0.82;
   window.speechSynthesis.speak(utterance);
 }
 
-function showApologyPrompt() {
-  if (apologyOpen) return;
-  const overlay = document.createElement("div");
-  overlay.id = "fc-apology-overlay";
-  overlay.innerHTML = `
-    <div class="fc-apology-box">
-      <h2>APOLOGIZE</h2>
-      <p>Type "i will focus" to continue</p>
-      <input type="text" id="fc-apology-input" placeholder="Type here..." autocomplete="off" />
-      <p class="fc-error"></p>
-    </div>
-  `;
+function showSpeech(message, yell) {
+  const root = ensureOverlay();
+  const bubble = root.querySelector(".fa-speech");
+  if (!bubble) return;
 
-  document.body.appendChild(overlay);
-  apologyOpen = true;
+  bubble.textContent = message;
+  bubble.classList.add("visible");
+  speakAloud(message, yell);
 
-  const input = overlay.querySelector("#fc-apology-input");
-  const error = overlay.querySelector(".fc-error");
+  clearTimeout(speechTimeout);
+  speechTimeout = setTimeout(() => {
+    bubble.classList.remove("visible");
+  }, 4000);
+}
 
-  input.focus();
+function updateVisibility() {
+  if (!overlay || !overlayState) return;
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const value = input.value.trim().toLowerCase();
-      if (value === "i will focus") {
-        chrome.runtime.sendMessage({ type: "APOLOGIZE" });
-        apologyOpen = false;
-        overlay.remove();
-      } else {
-        error.textContent = "Wrong. Try again.";
-        input.value = "";
-        overlay.classList.add("shake");
-        setTimeout(() => overlay.classList.remove("shake"), 500);
-      }
-    }
+  const shouldShow =
+    overlayState.sessionActive && (overlayState.pinnedTimer || overlayState.mood !== "happy");
+  overlay.classList.toggle("hidden", !shouldShow);
+}
+
+function renderOverlay() {
+  const root = ensureOverlay();
+  if (!overlayState) return;
+
+  root.className = "";
+  root.id = "focus-agent-overlay";
+  root.classList.add(overlayState.mood || "happy");
+  root.classList.toggle("collapsed", collapsed);
+
+  const topicEl = root.querySelector(".fa-topic");
+  const pillEl = root.querySelector(".fa-pill");
+  const timerEl = root.querySelector(".fa-timer");
+  const statusEl = root.querySelector(".fa-status");
+  const reasonEl = root.querySelector(".fa-reason");
+  const progressFill = root.querySelector(".fa-progress-fill");
+
+  const remainingMs = overlayState.remainingMs || 0;
+  const totalMs = (overlayState.sessionDurationMinutes || 50) * 60000;
+  const elapsedMs = overlayState.elapsedMs || 0;
+  const progress = totalMs > 0 ? Math.min(1, elapsedMs / totalMs) : 0;
+
+  if (topicEl) {
+    topicEl.textContent = overlayState.studyTopic || "Choose a study subject";
+  }
+
+  if (pillEl) {
+    const moodLabel = overlayState.goalComplete
+      ? "Complete"
+      : overlayState.sessionActive
+        ? overlayState.mood
+        : "Idle";
+    pillEl.textContent = moodLabel;
+  }
+
+  if (timerEl) {
+    timerEl.textContent = overlayState.sessionActive
+      ? formatDuration(remainingMs)
+      : formatDuration(totalMs);
+  }
+
+  if (statusEl) {
+    statusEl.textContent = overlayState.goalComplete
+      ? "Goal complete. No more shouting for this session."
+      : overlayState.lastClassification || "Watching Chrome locally.";
+  }
+
+  if (reasonEl) {
+    reasonEl.textContent = overlayState.lastReason || "Watching Chrome locally.";
+  }
+
+  if (progressFill) {
+    progressFill.style.width = `${Math.max(4, progress * 100)}%`;
+  }
+
+  updateVisibility();
+}
+
+function startTimerLoop() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!overlayState?.sessionActive) return;
+    renderOverlay();
+  }, 1000);
+}
+
+function extractPageText() {
+  const main =
+    document.querySelector("main, article, [role='main'], .content, #content") ||
+    document.body;
+  return (main?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 3500);
+}
+
+function sendSnapshot() {
+  if (!overlayState?.sessionActive) return;
+
+  const url = window.location.href;
+  if (lastSnapshotUrl === url) return;
+  lastSnapshotUrl = url;
+
+  chrome.runtime.sendMessage({
+    type: "PAGE_SNAPSHOT",
+    url,
+    title: document.title,
+    text: extractPageText(),
   });
 }
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === "MOOD_UPDATE") {
-    updateMascot(message.mood, message.sessionActive);
+function scheduleSnapshot() {
+  clearTimeout(snapshotTimeout);
+  snapshotTimeout = setTimeout(sendSnapshot, 900);
+}
+
+function getEditableText(target) {
+  if (!target) return "";
+
+  if (target instanceof HTMLInputElement) {
+    if (target.type === "password" || target.type === "email" || target.type === "search") {
+      return target.value || "";
+    }
+    return target.value || "";
   }
+
+  if (target instanceof HTMLTextAreaElement) {
+    return target.value || "";
+  }
+
+  if (target instanceof HTMLElement && target.isContentEditable) {
+    return target.innerText || "";
+  }
+
+  return "";
+}
+
+function queueTypedText(target) {
+  if (!overlayState?.sessionActive) return;
+
+  const text = getEditableText(target).trim();
+  if (text.length < 24) return;
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    chrome.runtime.sendMessage({
+      type: "TYPED_TEXT",
+      url: window.location.href,
+      title: document.title,
+      text: text.slice(-800),
+    });
+  }, 1200);
+}
+
+function handleRuntimeMessage(message) {
+  if (message.type === "STATE_UPDATE") {
+    overlayState = message.state;
+    renderOverlay();
+    startTimerLoop();
+  }
+
   if (message.type === "SHOUT") {
-    showSpeech(message.message || "Wrong tab. Get back to work.", true);
+    showSpeech(message.message || "Back to work.", true);
   }
+}
+
+function bridgeDashboardMessages(event) {
+  if (event.source !== window) return;
+  const data = event.data;
+  if (!data || data.source !== "focus-dashboard") return;
+
+  if (
+    data.type === "FOCUS_AGENT_CONFIG_SYNC" ||
+    data.type === "FOCUS_AGENT_START_SESSION" ||
+    data.type === "FOCUS_AGENT_END_SESSION"
+  ) {
+    chrome.runtime.sendMessage(data);
+  }
+}
+
+chrome.runtime.onMessage.addListener((message) => {
+  handleRuntimeMessage(message);
 });
 
 chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-  if (response) {
-    updateMascot(response.mood, response.sessionActive);
+  if (!response) return;
+  overlayState = response;
+  renderOverlay();
+  startTimerLoop();
+  scheduleSnapshot();
+});
+
+ensureOverlay();
+
+window.addEventListener("message", bridgeDashboardMessages);
+
+document.addEventListener("input", (event) => {
+  queueTypedText(event.target);
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    lastSnapshotUrl = "";
+    scheduleSnapshot();
   }
 });
 
-createMascot();
-
-// Send content on page load and navigation
-if (document.readyState === 'complete') {
-  scheduleContentSend();
+if (document.readyState === "complete") {
+  scheduleSnapshot();
 } else {
-  window.addEventListener('load', scheduleContentSend);
+  window.addEventListener("load", scheduleSnapshot);
 }
 
-// Detect SPA navigation
-let lastUrl = location.href;
+let observedUrl = location.href;
 new MutationObserver(() => {
-  if (location.href !== lastUrl) {
-    lastUrl = location.href;
-    lastSentUrl = null;
-    scheduleContentSend();
+  if (location.href !== observedUrl) {
+    observedUrl = location.href;
+    lastSnapshotUrl = "";
+    scheduleSnapshot();
   }
 }).observe(document, { subtree: true, childList: true });
-
-// Also send on visibility change (tab switch back)
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && sessionActive) {
-    scheduleContentSend();
-  }
-});

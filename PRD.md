@@ -1,127 +1,106 @@
-# Focus Companion - Posture + Soul Contract PRD
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_signed_at TIMESTAMPTZ;
+
+# Local Focus Agent PRD
 
 ## Overview
-Focus Companion is a web app that enforces deep focus through an aggressive mascot, real-time posture and phone detection, and a ritualized "sell your distractions" contract. The product is intentionally intense: the user trades distractions for future success under the mascot's watch.
+
+Local Focus Agent is a study enforcement system built around local monitoring instead of webcam analysis. The desktop path combines a Next.js dashboard with a Chrome extension that keeps a pinned timer visible, watches the active Chrome tab, scores page text and typed snippets with rule-based NLP, and shouts when the user drifts off topic before the timer is done.
+
+The mobile path is an Android app that monitors foreground usage and warns when Instagram, LinkedIn, or WhatsApp are opened before the study block is complete.
 
 ## Goals
-- Enforce attention and posture using real-time computer vision.
-- Interrupt phone use immediately and require a hands-up reset.
-- Create a memorable, ritualized onboarding moment via a soul contract.
-- Make monitoring status transparent via a popout camera window.
-- Gate access with single-use invite codes tied to a single user.
+
+- Replace webcam and posture monitoring in the active product flow.
+- Keep all browser-side relevance checks local and rule-based.
+- Maintain a visible pinned timer during study sessions.
+- Warn aggressively when the user types irrelevant text in Chrome.
+- Warn on Android when distracting apps are opened before the timer completes.
 
 ## Non-goals
-- Medical or ergonomic posture diagnosis.
-- Long-term habit coaching or therapy.
-- Mobile-native apps or OS-level monitoring.
 
-## Target Users
-- Students and knowledge workers who want extreme accountability.
-- Users who respond well to harsh external enforcement.
+- Webcam posture or phone detection in the active experience.
+- Cloud AI or remote inference for topic detection.
+- Full mobile app blocking or device admin controls.
+- System-wide Linux keylogging outside Chrome.
 
-## Narrative / Tone
-- The mascot is a "devil" figure that promises success and fame in exchange for time and focus.
-- The user signs a soul contract on first login.
-- The system shouts when the user breaks the pact.
+## Product Components
+
+### Dashboard
+
+- Authenticated Next.js app for subject selection, timer planning, and whitelist settings.
+- Stores study tabs, notes, streak, XP, and default session length.
+- Syncs local session config into the Chrome extension when opened on `localhost`.
+
+### Chrome Extension
+
+- Runs entirely in the browser.
+- Pins a timer overlay to the front of Chrome pages.
+- Monitors URLs, page titles, visible page text, and typed text from editable fields.
+- Uses keyword overlap plus simple distraction phrase detection for relevance scoring.
+- Shouts through browser speech synthesis when off-topic behavior is detected before time is up.
+
+### Android App
+
+- Native Android app with a foreground service.
+- Uses Usage Access to inspect the foreground app.
+- Sends notifications and voice prompts when Instagram, LinkedIn, or WhatsApp open before the study timer ends.
 
 ## Key Flows
-### Authentication and Access
-1. User enters username and invite code.
-2. Invite code is validated and consumed once (single-use).
-3. Invite code becomes the user's permanent password.
-4. Existing users must present their invite code every login.
 
-### Contract Ceremony
-1. After login, user is routed to a soul contract page.
-2. Scroll-style contract UI with sound effects.
-3. User signs the contract to proceed.
-4. Contract status is persisted in Supabase and enforced on all devices.
+### Desktop Session
 
-### Focus Session
-1. User starts a session and selects a study tab.
-2. Posture monitor runs in the background (face + object + hands).
-3. If slouching, looking down too long, or looking away from the screen for too long, the mascot shouts.
-4. If a phone is detected, shouting continues until the phone is removed and both hands are raised.
+1. User signs in to the dashboard.
+2. User selects a study subject and sets a target duration.
+3. User starts the session.
+4. Dashboard syncs subject, keywords, timer, and sound settings into the Chrome extension.
+5. Extension pins the timer overlay and begins local monitoring.
+6. If typed text or page content is off-topic, the extension escalates mood and shouts.
+7. Once the timer reaches zero, shouting stops for that session.
 
-### Monitoring Popout
-1. When debug monitoring is enabled, a popout appears automatically.
-2. The popout shows the camera feed and posture stats.
-3. The mascot popout follows the same behavior and can be minimized.
+### Mobile Session
+
+1. User opens the Android app.
+2. User grants Usage Access and notification permission.
+3. User starts a study block with a target duration.
+4. Foreground service watches app switches.
+5. If Instagram, LinkedIn, or WhatsApp become foreground before the block finishes, the app warns immediately.
 
 ## Functional Requirements
-### F1: Posture and Attention Detection
-- Detect slouching vs baseline upright posture.
-- Detect looking down for sustained periods.
-- Detect looking away from the screen beyond a time threshold (e.g., 3 minutes).
-- Use MediaPipe Tasks (face landmarking + head angles).
-- Maintain a baseline reference for upright posture.
 
-### F2: Phone Detection and Reset
-- Detect a phone in the camera frame.
-- When phone is detected, the mascot shouts continuously.
-- Shouting stops only when:
-  - Phone is no longer detected, and
-  - Both hands are raised and visible.
+### F1: Rule-based Relevance Scoring
 
-### F3: Mascot Behavior
-- The mascot shouts for posture, attention, and phone violations.
-- Mascot transitions between moods (happy, suspicious, angry, demon) based on violations.
-- Demon overlay appears if the user leaves the tab.
+- Tokenize topic name plus user keywords.
+- Tokenize page text and typed snippets locally.
+- Compute overlap-based relevance score without ML models.
+- Use explicit distractor phrase patterns for chat/social language.
 
-### F4: Monitoring Popout
-- Auto-open when posture monitoring + debug is enabled.
-- Displays camera feed + stats (posture state, timers, phone/hands state).
-- Can be minimized or restored.
+### F2: Chrome Enforcement
 
-### F5: Invite Codes
-- Invites are single-use and unique.
-- Invite becomes the user's password.
-- If a user has no invite yet, first valid invite binds to that user.
-- If invite is already used, login is blocked.
+- Detect blocked distractor domains.
+- Detect typed text that is irrelevant to the active subject.
+- Keep a pinned timer visible during active sessions.
+- Use browser speech synthesis for audible warnings.
 
-### F6: Soul Contract
-- Contract is required once per account and stored in Supabase.
-- Contract page includes scroll UI, sigils, and sound effects.
-- Declining logs the user out.
+### F3: Session Timing
 
-## Data Model (Supabase)
-- users
-  - id (uuid)
-  - username (text)
-  - invite_code (text, unique)
-  - contract_signed_at (timestamptz)
-  - xp / level / streak / last_active_date
-- invite_codes
-  - code (text, unique)
-  - uses_remaining (int, default 1)
-  - expires_at (timestamptz)
+- Support configurable study goals in minutes.
+- Track start time, end time, remaining time, and elapsed time.
+- Stop punitive warnings once the goal is complete.
 
-## Permissions and Privacy
-- Webcam access is required and must be permitted by the browser.
-- No raw frames are stored server-side.
-- All inference runs in-browser.
+### F4: Android Foreground Monitoring
 
-## UX Requirements
-- The contract page feels ritualistic, heavy, and ceremonial.
-- The focus experience is tense and strict.
-- Animations are purposeful (embers, scroll glow, reveal effects).
+- Poll recent usage events.
+- Detect foreground switches into targeted distracting apps.
+- Raise a high-priority notification and TextToSpeech warning.
 
-## Technical Requirements
-- Next.js 16 with client-side hooks for posture detection.
-- MediaPipe Tasks Vision assets hosted and referenced via env vars.
-- Supabase used for user profile, invites, whitelist, and contract state.
+## Privacy
 
-## Success Metrics
-- Percent of users who complete the contract.
-- Average duration of uninterrupted focus session.
-- Reduction in phone detections per session.
+- No webcam is required for the active flow.
+- No raw browser text is sent to a server for analysis.
+- Android app inspects foreground package names only.
 
-## Risks and Constraints
-- Camera access can be blocked by deployment permissions policy.
-- Users may mute audio; alerts could be ignored.
-- Performance could degrade on low-end devices.
+## Risks
 
-## Open Questions
-- Should thresholds for posture/attention be user-configurable?
-- Do we need a cooldown to prevent alert spam?
-- Should contract signature be re-confirmed after long inactivity?
+- Chrome monitoring is limited to what the extension can observe in tabs and editable fields.
+- Android warnings depend on Usage Access being granted and background execution not being heavily restricted.
+- The current repo environment does not include Java or the Android SDK, so APK generation must happen elsewhere.

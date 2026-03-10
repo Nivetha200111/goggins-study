@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="focus_bg">#090608</color>
+    <color name="focus_text">#F8E8D9</color>
+    <color name="focus_muted">#CDB9AA</color>
+    <color name="focus_accent">#F97316</color>
+</resources>

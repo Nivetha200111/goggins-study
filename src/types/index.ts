@@ -22,6 +22,9 @@ export interface GameState {
   streak: number;
   lastActiveDate: string | null;
   sessionStart: number | null;
+  sessionStartedAt: number | null;
+  sessionGoalEndsAt: number | null;
+  sessionGoalMinutes: number;
   lastActivityTime: number;
   isDemonModeEnabled: boolean;
   isMonitoringEnabled: boolean;
@@ -35,6 +38,7 @@ export interface GameState {
   togglePostureMonitoring: () => void;
   togglePostureDebug: () => void;
   toggleSound: () => void;
+  setSessionGoalMinutes: (minutes: number) => void;
   startSession: () => void;
   endSession: () => void;
   addTab: (name: string, color: string) => void;

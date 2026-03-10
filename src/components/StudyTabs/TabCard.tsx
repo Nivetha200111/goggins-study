@@ -34,31 +34,19 @@ export function TabCard({ tab, isActive, onClick, disabled }: TabCardProps) {
         }
       }}
     >
-      {/* Color indicator */}
       <div className="tab-color" style={{ backgroundColor: tab.color }} />
 
-      {/* Content */}
       <div className="tab-content">
         <h3 className="tab-name">{tab.name}</h3>
         <div className="tab-stats">
-          <span className="stat">
-            <span className="stat-icon">&#128337;</span>
-            {formatTime(tab.focusMinutes)}
-          </span>
-          <span className="stat">
-            <span className="stat-icon">&#11088;</span>
-            {tab.xp} XP
-          </span>
-          {tab.distractions > 0 && (
-            <span className="stat distraction">
-              <span className="stat-icon">&#128683;</span>
-              {tab.distractions}
-            </span>
-          )}
+          <span className="stat">Time {formatTime(tab.focusMinutes)}</span>
+          <span className="stat">XP {tab.xp}</span>
+          {tab.distractions > 0 ? (
+            <span className="stat danger">Miss {tab.distractions}</span>
+          ) : null}
         </div>
       </div>
 
-      {/* Delete button (only when not in session) */}
       {!isSessionActive && (
         <button
           className="delete-btn"
@@ -68,126 +56,104 @@ export function TabCard({ tab, isActive, onClick, disabled }: TabCardProps) {
           }}
           aria-label={`Delete ${tab.name}`}
         >
-          &times;
+          Del
         </button>
       )}
 
-      {/* Active indicator */}
-      {isActive && <div className="active-indicator">SELECTED</div>}
+      {isActive ? <div className="active-indicator">Active</div> : null}
 
       <style jsx>{`
         .tab-card {
           position: relative;
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 16px;
-          background: var(--background);
-          border-radius: 16px;
+          gap: 12px;
+          padding: 14px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: rgba(10, 4, 20, 0.45);
           cursor: pointer;
-          transition: all 0.2s ease;
-          border: 2px solid transparent;
+          transition: transform 0.08s steps(2, jump-none), box-shadow 0.08s steps(2, jump-none);
         }
 
         .tab-card:hover:not(.disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          transform: translate(2px, 2px);
+          box-shadow: 2px 2px 0 var(--shadow);
         }
 
         .tab-card.active {
-          border-color: var(--accent);
-          background: white;
+          background: #452482;
+          border-color: #14091f;
         }
 
         .tab-card.disabled {
-          cursor: not-allowed;
           opacity: 0.7;
+          cursor: not-allowed;
         }
 
         .tab-color {
-          width: 8px;
-          height: 48px;
-          border-radius: 4px;
+          width: 16px;
+          height: 72px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
           flex-shrink: 0;
         }
 
         .tab-content {
-          flex: 1;
           min-width: 0;
+          flex: 1;
         }
 
         .tab-name {
-          font-size: 1rem;
-          font-weight: 600;
-          color: var(--ink);
-          margin: 0 0 4px 0;
+          margin: 0;
+          color: #fff6bf;
+          font-size: 0.9rem;
+          line-height: 1.5;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
         .tab-stats {
+          margin-top: 8px;
           display: flex;
-          gap: 12px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
         .stat {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 0.75rem;
-          color: var(--muted);
+          padding: 6px 8px;
+          border: 2px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--foreground);
+          font-size: 1.1rem;
+          line-height: 1;
         }
 
-        .stat-icon {
-          font-size: 0.875rem;
+        .stat.danger {
+          color: #ffd2d2;
+          background: rgba(255, 122, 122, 0.18);
         }
 
-        .stat.distraction {
-          color: #dc2626;
+        .delete-btn,
+        .active-indicator {
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          min-height: 38px;
+          padding: 6px 10px;
+          font-size: 0.68rem;
+          line-height: 1.6;
         }
 
         .delete-btn {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.25rem;
-          color: var(--muted);
-          background: transparent;
-          border: none;
-          border-radius: 50%;
+          background: var(--danger);
+          color: #260b0b;
           cursor: pointer;
-          opacity: 0;
-          transition: all 0.2s ease;
-        }
-
-        .tab-card:hover .delete-btn {
-          opacity: 1;
-        }
-
-        .delete-btn:hover {
-          color: #dc2626;
-          background: rgba(220, 38, 38, 0.1);
         }
 
         .active-indicator {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          font-size: 0.625rem;
-          font-weight: 700;
-          color: var(--accent);
-          letter-spacing: 1px;
-        }
-
-        .tab-card.active .delete-btn {
-          display: none;
+          background: var(--success);
+          color: #10220e;
         }
       `}</style>
     </div>

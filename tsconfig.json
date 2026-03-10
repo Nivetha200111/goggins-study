@@ -30,5 +30,15 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/components/Companion/**/*",
+    "src/components/PostureMonitor/**/*",
+    "src/components/Quiz/**/*",
+    "src/hooks/useContentAnalyzer.ts",
+    "src/hooks/useDemonMode.ts",
+    "src/hooks/usePostureMonitor.ts",
+    "src/hooks/useQuizGenerator.ts",
+    "src/store/studyIntelligenceStore.ts"
+  ]
 }

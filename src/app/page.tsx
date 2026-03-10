@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useGameStore } from "@/store/gameStore";
-import { Companion } from "@/components/Companion/Companion";
-import { DemonOverlay } from "@/components/Companion/DemonOverlay";
 import { TabSelector } from "@/components/StudyTabs/TabSelector";
-import { PostureMonitor } from "@/components/PostureMonitor/PostureMonitor";
-import { StudyIntelligence } from "@/components/Quiz/StudyIntelligence";
+import { useGameStore } from "@/store/gameStore";
 import { getUser } from "@/lib/supabase";
 
 interface User {
@@ -16,10 +12,39 @@ interface User {
   username: string;
 }
 
+function formatDuration(totalMs: number): string {
+  const clamped = Math.max(0, totalMs);
+  const totalSeconds = Math.floor(clamped / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+function formatMinutes(totalMinutes: number): string {
+  if (totalMinutes < 60) {
+    return `${Math.round(totalMinutes)}m`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  return `${hours}h ${minutes}m`;
+}
+
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(0);
 
   const {
     tabs,
@@ -30,16 +55,20 @@ export default function Home() {
     totalXp,
     level,
     streak,
-    mood,
     loadUserData,
     isLoading,
     updateFocusTime,
     notesByTab,
     setNotes,
+    sessionGoalMinutes,
+    setSessionGoalMinutes,
+    sessionStartedAt,
+    sessionGoalEndsAt,
   } = useGameStore();
 
   useEffect(() => {
     let isMounted = true;
+
     const bootstrap = async () => {
       const stored = localStorage.getItem("focus-companion-user");
       if (!stored) {
@@ -47,6 +76,7 @@ export default function Home() {
         if (isMounted) setLoading(false);
         return;
       }
+
       const parsed = JSON.parse(stored) as User;
       const profile = await getUser(parsed.id);
       if (!profile) {
@@ -54,34 +84,66 @@ export default function Home() {
         if (isMounted) setLoading(false);
         return;
       }
+
       if (!profile.contract_signed_at) {
         router.push("/contract");
         if (isMounted) setLoading(false);
         return;
       }
+
       if (isMounted) {
         setUser(parsed);
       }
+
       await loadUserData(parsed.id);
       if (isMounted) setLoading(false);
     };
+
     void bootstrap();
+
     return () => {
       isMounted = false;
     };
-  }, [router, loadUserData]);
+  }, [loadUserData, router]);
 
   useEffect(() => {
     if (!isSessionActive) return;
+
     const interval = setInterval(() => {
       updateFocusTime();
     }, 60000);
+
     return () => clearInterval(interval);
   }, [isSessionActive, updateFocusTime]);
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  useEffect(() => {
+    if (!isSessionActive) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      setNow(Date.now());
+    });
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      clearInterval(interval);
+    };
+  }, [isSessionActive]);
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
   const notesValue = activeTabId ? notesByTab[activeTabId] ?? "" : "";
-  const canStartSession = activeTabId !== null;
+  const canStartSession = Boolean(activeTabId);
+
+  const totalPlannedMs = sessionGoalMinutes * 60000;
+  const elapsedMs =
+    isSessionActive && sessionStartedAt ? Math.max(0, now - sessionStartedAt) : 0;
+  const remainingMs =
+    isSessionActive && sessionGoalEndsAt
+      ? Math.max(0, sessionGoalEndsAt - now)
+      : totalPlannedMs;
+  const progress = totalPlannedMs > 0 ? Math.min(1, elapsedMs / totalPlannedMs) : 0;
 
   const handleSignOut = () => {
     if (isSessionActive) {
@@ -94,28 +156,38 @@ export default function Home() {
   if (loading || isLoading) {
     return (
       <div className="loading-screen">
-        <div className="loading-eye" />
-        <p>Summoning...</p>
+        <div className="loading-sprite" />
+        <p>Booting pixel arena...</p>
         <style jsx>{`
           .loading-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             min-height: 100vh;
-            color: var(--muted);
+            display: grid;
+            place-items: center;
+            gap: 18px;
+            color: var(--accent);
+            text-align: center;
           }
-          .loading-eye {
-            width: 60px;
-            height: 60px;
-            background: radial-gradient(circle, #ffedd5 0%, #e11d48 100%);
-            border-radius: 50%;
-            margin-bottom: 16px;
-            animation: pulse 1.5s ease-in-out infinite;
+
+          .loading-sprite {
+            width: 72px;
+            height: 72px;
+            background:
+              linear-gradient(90deg, transparent 0 18px, var(--accent) 18px 54px, transparent 54px 100%),
+              linear-gradient(180deg, transparent 0 18px, var(--accent-2) 18px 54px, transparent 54px 100%),
+              var(--panel);
+            border: 4px solid var(--edge);
+            box-shadow: 6px 6px 0 var(--shadow);
+            animation: blink 0.9s steps(2, jump-none) infinite;
           }
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+
+          p {
+            margin: 0;
+            font-size: 1.6rem;
+          }
+
+          @keyframes blink {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
           }
         `}</style>
       </div>
@@ -125,435 +197,626 @@ export default function Home() {
   if (!user) return null;
 
   return (
-    <div className="app-container">
-      <div className="bg-orb orb-1" />
-      <div className="bg-orb orb-2" />
-      <div className="bg-orb orb-3" />
+    <div className="dashboard-page">
+      <div className="stars" />
+      <div className="terrain terrain-back" />
+      <div className="terrain terrain-front" />
 
-      <main className="main-content">
-        <header className="app-header">
-          <div className="header-left">
-            <p className="app-subtitle">Welcome back, {user.username}</p>
-            <h1 className="app-title">Infernal Companion</h1>
-            <p className="app-description">
-              Your infernal warden watches. Drift away and the pact bites back.
+      <main className="dashboard-shell">
+        <header className="hero pixel-panel">
+          <div className="hero-copy">
+            <p className="hero-label">Player One: {user.username}</p>
+            <h1>Local Focus Quest</h1>
+            <p className="hero-text">
+              Retro HUD outside, strict agent underneath. Chrome stays pinned with a
+              timer, reads visible study text and typed snippets, and barks the moment
+              you drift before the run is complete.
             </p>
           </div>
 
-          <div className="header-right">
+          <div className="hero-actions">
             <div className="stats-bar">
-              <div className="stat-item">
-                <span className="stat-label">Level</span>
-                <span className="stat-value">{level}</span>
+              <div className="stat-tile">
+                <span className="stat-label">Lvl</span>
+                <strong>{level}</strong>
               </div>
-              <div className="stat-item">
+              <div className="stat-tile">
                 <span className="stat-label">XP</span>
-                <span className="stat-value">{totalXp}</span>
+                <strong>{totalXp}</strong>
               </div>
-              <div className="stat-item">
+              <div className="stat-tile">
                 <span className="stat-label">Streak</span>
-                <span className="stat-value streak">{streak} days</span>
+                <strong>{streak}d</strong>
               </div>
             </div>
 
-            <div className="header-actions">
-              <Link href="/settings" className="ghost-btn">
-                Settings
+            <div className="button-row">
+              <Link href="/settings" className="pixel-btn alt">
+                Options
               </Link>
-              <button className="ghost-btn" onClick={handleSignOut}>
-                Sign Out
+              <button type="button" className="pixel-btn alt" onClick={handleSignOut}>
+                Exit
               </button>
               <button
+                type="button"
+                className={`pixel-btn ${isSessionActive ? "danger" : "primary"}`}
                 onClick={isSessionActive ? endSession : startSession}
                 disabled={!canStartSession && !isSessionActive}
-                className={`session-btn ${isSessionActive ? "active" : ""}`}
               >
-                {isSessionActive ? "End Session" : "Start Session"}
+                {isSessionActive ? "Stop Run" : "Start Run"}
               </button>
             </div>
           </div>
         </header>
 
+        <section className="marquee-row">
+          <div className="marquee pixel-panel">
+            <span className="marquee-title">Browser agent</span>
+            <span>Chrome title + URL + visible text + typed fields</span>
+          </div>
+          <div className="marquee pixel-panel">
+            <span className="marquee-title">Pinned clock</span>
+            <span>Always-on HUD overlay while the run is active</span>
+          </div>
+          <div className="marquee pixel-panel">
+            <span className="marquee-title">Mobile alert</span>
+            <span>Android companion warns on Instagram, LinkedIn, WhatsApp</span>
+          </div>
+        </section>
+
         <div className="content-grid">
           <div className="left-column">
             <TabSelector />
 
-            <div className="tips-card">
-              <h3>Ritual Steps</h3>
-              <ul>
-                <li>Select a subject to pledge</li>
-                <li>Start your session</li>
-                <li>The warden watches</li>
-                <li>Slouching or looking away too long draws wrath</li>
-                <li>Leave the tab = face the demon</li>
-                <li>Stay focused = earn XP</li>
+            <section className="pixel-panel info-card">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-kicker">Quest Setup</p>
+                  <h2>Stage Timer</h2>
+                </div>
+                <span className={`badge ${isSessionActive ? "live" : ""}`}>
+                  {isSessionActive ? "Live" : "Idle"}
+                </span>
+              </div>
+
+              <label className="goal-field">
+                <span>Goal Minutes</span>
+                <input
+                  type="number"
+                  min={15}
+                  max={480}
+                  step={5}
+                  value={sessionGoalMinutes}
+                  disabled={isSessionActive}
+                  onChange={(event) =>
+                    setSessionGoalMinutes(Number(event.target.value || sessionGoalMinutes))
+                  }
+                />
+              </label>
+
+              <div className="flavor-copy">
+                <p>The dashboard syncs the active quest, sound, timer, and allowlist.</p>
+                <p>The extension can still keep score even if this tab is not visible.</p>
+              </div>
+            </section>
+
+            <section className="pixel-panel info-card">
+              <p className="panel-kicker">Rulebook</p>
+              <h2>How you lose HP</h2>
+              <ul className="rule-list">
+                <li>Typing text with weak overlap against your topic keywords.</li>
+                <li>Opening blocked distractor domains before the timer ends.</li>
+                <li>Writing obvious social chatter instead of study material.</li>
+                <li>Landing on pages that fail both allowlist and relevance checks.</li>
               </ul>
-            </div>
+            </section>
           </div>
 
           <div className="right-column">
-            <div className="focus-area">
-              <div className="focus-header">
+            <section className="pixel-panel timer-card">
+              <div className="panel-header">
                 <div>
-                  <p className="focus-label">Current Focus</p>
-                  <h2 className="focus-subject">
-                    {activeTab ? activeTab.name : "Select a subject"}
-                  </h2>
+                  <p className="panel-kicker">Run HUD</p>
+                  <h2>{activeTab?.name ?? "Choose a quest slot"}</h2>
                 </div>
+                <span className="badge goal">{sessionGoalMinutes} min</span>
+              </div>
+
+              <div className="timer-value">
+                {isSessionActive ? formatDuration(remainingMs) : formatDuration(totalPlannedMs)}
+              </div>
+
+              <div className="timer-meta">
+                <span>Elapsed {formatDuration(elapsedMs)}</span>
+                <span>
+                  {isSessionActive
+                    ? remainingMs > 0
+                      ? "Quest active"
+                      : "Quest clear"
+                    : "Waiting for launch"}
+                </span>
+              </div>
+
+              <div className="progress-track" aria-hidden="true">
                 <div
-                  className={`session-indicator ${isSessionActive ? "active" : ""}`}
-                  style={
-                    isSessionActive && activeTab
-                      ? { backgroundColor: activeTab.color }
-                      : undefined
-                  }
-                >
-                  {isSessionActive ? "ACTIVE" : "PAUSED"}
+                  className="progress-fill"
+                  style={{ width: `${Math.max(4, progress * 100)}%` }}
+                />
+              </div>
+
+              <div className="timer-stats">
+                <div>
+                  <span className="mini-label">Study Time</span>
+                  <strong>{activeTab ? formatMinutes(activeTab.focusMinutes) : "0m"}</strong>
                 </div>
+                <div>
+                  <span className="mini-label">Misses</span>
+                  <strong>{activeTab?.distractions ?? 0}</strong>
+                </div>
+                <div>
+                  <span className="mini-label">Quest XP</span>
+                  <strong>{activeTab?.xp ?? 0}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section className="pixel-panel notes-card">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-kicker">Notebook</p>
+                  <h2>Topic Memory</h2>
+                </div>
+                <span className="badge note">
+                  {activeTab ? "Auto save" : "Select subject"}
+                </span>
               </div>
 
               <textarea
                 className="notes-area"
                 value={notesValue}
-                onChange={(e) => {
+                onChange={(event) => {
                   if (activeTabId) {
-                    setNotes(activeTabId, e.target.value);
+                    setNotes(activeTabId, event.target.value);
                   }
                 }}
-                placeholder={
-                  isSessionActive
-                    ? "Etch your notes here... the pact is watching."
-                    : "Start a session to open the grimoire..."
-                }
-                disabled={!isSessionActive || !activeTabId}
+                placeholder="Drop the key terms the Chrome agent should keep hearing in your work."
+                disabled={!activeTabId}
               />
+            </section>
 
-              {activeTab && (
-                <div className="focus-stats">
-                  <div className="focus-stat">
-                    <span className="focus-stat-value">
-                      {activeTab.focusMinutes.toFixed(0)}
-                    </span>
-                    <span className="focus-stat-label">Minutes</span>
-                  </div>
-                  <div className="focus-stat">
-                    <span className="focus-stat-value">{activeTab.xp}</span>
-                    <span className="focus-stat-label">XP Earned</span>
-                  </div>
-                  <div className="focus-stat">
-                    <span className="focus-stat-value danger">
-                      {activeTab.distractions}
-                    </span>
-                    <span className="focus-stat-label">Distractions</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mood-indicator">
-              <p className="mood-label">Warden Mood</p>
-              <div className={`mood-display ${mood}`}>
-                {mood === "happy" && "Compliant"}
-                {mood === "suspicious" && "Watching"}
-                {mood === "angry" && "Wrath"}
-                {mood === "demon" && "INFERNAL"}
-              </div>
-            </div>
+            <section className="pixel-panel info-card">
+              <p className="panel-kicker">Mobile Quest</p>
+              <h2>Android sidecar is scaffolded</h2>
+              <p className="flavor-single">
+                The phone app source in `android-app/` watches foreground usage and
+                shouts when Instagram, LinkedIn, or WhatsApp open before your study run
+                finishes.
+              </p>
+            </section>
           </div>
         </div>
       </main>
 
-      <Companion />
-      <PostureMonitor />
-      <StudyIntelligence />
-      <DemonOverlay />
-
       <style jsx>{`
-        .app-container {
+        .dashboard-page {
           position: relative;
           min-height: 100vh;
           overflow: hidden;
-          padding: 32px;
-          color: var(--foreground);
+          padding: 18px 12px 64px;
         }
-        .bg-orb {
+
+        .stars,
+        .terrain {
           position: absolute;
-          border-radius: 50%;
+          inset: 0;
           pointer-events: none;
-          filter: blur(60px);
         }
-        .orb-1 {
-          width: 300px;
-          height: 300px;
-          background: rgba(255, 90, 70, 0.32);
-          top: -100px;
-          left: -100px;
-          animation: floaty 12s ease-in-out infinite;
+
+        .stars {
+          background-image:
+            radial-gradient(circle, rgba(255, 255, 255, 0.85) 0 1px, transparent 1px),
+            radial-gradient(circle, rgba(255, 216, 74, 0.75) 0 1px, transparent 1px),
+            radial-gradient(circle, rgba(70, 216, 255, 0.75) 0 1px, transparent 1px);
+          background-size: 140px 140px, 210px 210px, 280px 280px;
+          background-position: 20px 18px, 100px 60px, 60px 120px;
+          opacity: 0.6;
         }
-        .orb-2 {
-          width: 400px;
-          height: 400px;
-          background: rgba(120, 16, 20, 0.35);
-          top: 50%;
-          right: -150px;
-          animation: floaty 15s ease-in-out infinite reverse;
+
+        .terrain {
+          bottom: 0;
+          top: auto;
+          height: 240px;
+          image-rendering: pixelated;
         }
-        .orb-3 {
-          width: 250px;
-          height: 250px;
-          background: rgba(255, 176, 97, 0.2);
-          bottom: -80px;
-          left: 30%;
-          animation: floaty 10s ease-in-out infinite;
+
+        .terrain-back {
+          background:
+            linear-gradient(
+              135deg,
+              transparent 0 12%,
+              #30185b 12% 18%,
+              transparent 18% 28%,
+              #30185b 28% 38%,
+              transparent 38% 48%,
+              #30185b 48% 60%,
+              transparent 60% 100%
+            );
+          opacity: 0.78;
         }
-        @keyframes floaty {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-20px); }
+
+        .terrain-front {
+          height: 180px;
+          background:
+            linear-gradient(
+              135deg,
+              transparent 0 8%,
+              #13091f 8% 16%,
+              transparent 16% 22%,
+              #13091f 22% 34%,
+              transparent 34% 40%,
+              #13091f 40% 54%,
+              transparent 54% 64%,
+              #13091f 64% 78%,
+              transparent 78% 100%
+            );
+          opacity: 0.95;
         }
-        .main-content {
+
+        .dashboard-shell {
           position: relative;
-          max-width: 1200px;
+          z-index: 1;
+          width: min(1240px, 100%);
           margin: 0 auto;
-        }
-        .app-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          gap: 32px;
-          margin-bottom: 40px;
-          flex-wrap: wrap;
-        }
-        .header-left { flex: 1; min-width: 280px; }
-        .app-subtitle {
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 3px;
-          color: var(--muted);
-          margin: 0 0 8px 0;
-        }
-        .app-title {
-          font-size: 3rem;
-          font-weight: 700;
-          color: var(--foreground);
-          margin: 0;
-          line-height: 1.1;
-          text-shadow: 0 10px 30px rgba(225, 29, 72, 0.35);
-        }
-        .app-description {
-          font-size: 1rem;
-          color: var(--muted);
-          margin: 12px 0 0 0;
-          max-width: 400px;
-        }
-        .header-right {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
+          display: grid;
           gap: 16px;
         }
-        .stats-bar { display: flex; gap: 24px; }
-        .stat-item { text-align: center; }
-        .stat-label {
-          display: block;
-          font-size: 0.625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: var(--muted);
+
+        .pixel-panel {
+          background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel) 100%);
+          border: 4px solid var(--edge);
+          box-shadow: var(--shadow-strong);
+          padding: 18px;
         }
-        .stat-value {
-          display: block;
-          font-size: 1.5rem;
-          font-weight: 700;
+
+        .hero {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+          gap: 18px;
+          align-items: end;
+        }
+
+        .hero-label,
+        .panel-kicker,
+        .stat-label,
+        .mini-label,
+        .marquee-title {
+          margin: 0 0 8px;
+          color: var(--accent);
+          font-size: 0.74rem;
+          line-height: 1.7;
+        }
+
+        h1,
+        h2 {
+          margin: 0;
+          line-height: 1.35;
+        }
+
+        h1 {
+          max-width: 12ch;
+          font-size: clamp(1.55rem, 3.2vw, 2.8rem);
+          color: #fff7ba;
+          text-shadow: 4px 4px 0 #2f1a57;
+        }
+
+        h2 {
+          font-size: clamp(1rem, 2vw, 1.35rem);
+          color: #fff4d1;
+        }
+
+        .hero-text,
+        .flavor-copy p,
+        .flavor-single {
+          margin: 14px 0 0;
+          font-size: 1.45rem;
+          line-height: 1.15;
           color: var(--foreground);
+          max-width: 42ch;
         }
-        .stat-value.streak { color: var(--accent); }
-        .header-actions {
-          display: flex;
-          align-items: center;
+
+        .hero-actions {
+          display: grid;
+          gap: 14px;
+        }
+
+        .stats-bar,
+        .timer-stats,
+        .marquee-row {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px;
         }
-        .ghost-btn {
-          padding: 10px 18px;
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: var(--foreground);
-          background: rgba(10, 5, 6, 0.4);
+
+        .stat-tile,
+        .marquee {
+          background: rgba(10, 4, 20, 0.45);
+          border: 4px solid var(--edge);
+          box-shadow: var(--shadow-soft);
+          padding: 14px;
+        }
+
+        .stat-tile strong {
+          display: block;
+          font-size: 2.2rem;
+          color: var(--accent-3);
+          font-family: var(--font-pixel-body), monospace;
+          letter-spacing: 0.02em;
+        }
+
+        .marquee {
+          display: grid;
+          gap: 6px;
+          align-content: start;
+          min-height: 96px;
+          font-size: 1.35rem;
+          line-height: 1.1;
+        }
+
+        .marquee-title {
+          color: var(--accent-2);
+        }
+
+        .button-row {
+          display: flex;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .pixel-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 48px;
+          padding: 12px 16px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
           text-decoration: none;
-          font-weight: 600;
-          font-size: 0.85rem;
-          cursor: pointer;
-        }
-        .ghost-btn:hover {
-          border-color: rgba(225, 29, 72, 0.6);
-          background: rgba(225, 29, 72, 0.2);
-        }
-        .session-btn {
-          padding: 14px 32px;
-          font-size: 1rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: white;
           background: var(--accent);
-          border: none;
-          border-radius: 50px;
+          color: #140b23;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: transform 0.08s steps(2, jump-none), box-shadow 0.08s steps(2, jump-none);
         }
-        .session-btn:hover:not(:disabled) {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 24px var(--glow);
+
+        .pixel-btn.alt {
+          background: var(--accent-3);
         }
-        .session-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .session-btn.active { background: var(--accent-deep); }
+
+        .pixel-btn.danger {
+          background: var(--danger);
+        }
+
+        .pixel-btn:hover:not(:disabled) {
+          transform: translate(2px, 2px);
+          box-shadow: 2px 2px 0 var(--shadow);
+        }
+
+        .pixel-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .content-grid {
           display: grid;
-          grid-template-columns: 1fr 1.5fr;
-          gap: 32px;
+          grid-template-columns: minmax(320px, 0.42fr) minmax(0, 0.58fr);
+          gap: 16px;
         }
-        @media (max-width: 900px) {
-          .content-grid { grid-template-columns: 1fr; }
+
+        .left-column,
+        .right-column {
+          display: grid;
+          gap: 16px;
+          align-content: start;
         }
-        .left-column {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
+
+        .info-card {
+          display: grid;
+          gap: 14px;
         }
-        .tips-card {
-          background: var(--card);
-          border-radius: 20px;
-          padding: 20px 24px;
-          border: 1px solid var(--edge);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-        }
-        .tips-card h3 {
-          font-size: 0.875rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          color: var(--muted);
-          margin: 0 0 12px 0;
-        }
-        .tips-card ul {
-          margin: 0;
-          padding: 0 0 0 20px;
-          font-size: 0.875rem;
-          color: var(--foreground);
-        }
-        .tips-card li { margin-bottom: 6px; }
-        .focus-area {
-          background: var(--card);
-          border-radius: 24px;
-          padding: 28px;
-          border: 1px solid var(--edge);
-          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-        }
-        .focus-header {
+
+        .panel-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 20px;
+          gap: 12px;
         }
-        .focus-label {
-          font-size: 0.75rem;
-          font-weight: 600;
+
+        .badge {
+          display: inline-flex;
+          align-items: center;
+          min-height: 38px;
+          padding: 8px 12px;
+          border: 4px solid var(--edge);
+          background: rgba(10, 4, 20, 0.55);
+          color: var(--muted);
+          box-shadow: 4px 4px 0 var(--shadow);
+          font-size: 0.72rem;
+        }
+
+        .badge.live {
+          color: #10200d;
+          background: var(--success);
+        }
+
+        .badge.goal {
+          color: #201200;
+          background: var(--accent);
+        }
+
+        .badge.note {
+          color: #061926;
+          background: var(--accent-3);
+        }
+
+        .goal-field {
+          display: grid;
+          gap: 8px;
+        }
+
+        .goal-field span {
+          font-size: 0.74rem;
+          color: var(--accent-2);
+          font-family: var(--font-pixel-heading), monospace;
           text-transform: uppercase;
-          letter-spacing: 2px;
-          color: var(--muted);
-          margin: 0 0 4px 0;
         }
-        .focus-subject {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: var(--foreground);
-          margin: 0;
-        }
-        .session-indicator {
-          padding: 8px 16px;
-          font-size: 0.625rem;
-          font-weight: 700;
-          letter-spacing: 1px;
-          color: var(--muted);
-          background: #1f1415;
-          border: 1px solid var(--edge);
-          border-radius: 20px;
-          transition: all 0.3s ease;
-        }
-        .session-indicator.active {
-          color: white;
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.1); opacity: 0.8; }
-        }
+
+        .goal-field input,
         .notes-area {
           width: 100%;
-          min-height: 200px;
-          padding: 16px;
-          font-size: 0.95rem;
-          font-family: inherit;
-          color: var(--foreground);
-          background: var(--card-muted);
-          border: 1px solid var(--edge);
-          border-radius: 16px;
-          resize: vertical;
-          outline: none;
-          transition: all 0.2s ease;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: #f2f0ff;
+          color: #13091f;
+          padding: 12px 14px;
+          font-size: 1.55rem;
+          line-height: 1.1;
         }
-        .notes-area:focus { border-color: var(--accent); }
-        .notes-area:disabled { opacity: 0.6; cursor: not-allowed; }
-        .notes-area::placeholder {
-          color: rgba(247, 231, 214, 0.55);
+
+        .goal-field input:disabled,
+        .notes-area:disabled {
+          opacity: 0.7;
         }
-        .focus-stats {
+
+        .rule-list {
+          margin: 0;
+          padding-left: 18px;
+          display: grid;
+          gap: 10px;
+          font-size: 1.4rem;
+          line-height: 1.08;
+        }
+
+        .timer-card {
+          background:
+            linear-gradient(180deg, rgba(72, 42, 130, 0.96) 0%, rgba(39, 20, 82, 0.98) 100%);
+        }
+
+        .timer-value {
+          margin-top: 16px;
+          font-family: var(--font-pixel-body), monospace;
+          font-size: clamp(4.6rem, 10vw, 7.4rem);
+          line-height: 0.9;
+          color: #fff7ba;
+          text-shadow: 6px 6px 0 #201040;
+        }
+
+        .timer-meta {
+          margin-top: 10px;
           display: flex;
-          justify-content: space-around;
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 1px solid var(--edge);
+          justify-content: space-between;
+          gap: 12px;
+          font-size: 1.3rem;
+          line-height: 1.1;
+          color: var(--muted);
         }
-        .focus-stat { text-align: center; }
-        .focus-stat-value {
-          display: block;
+
+        .progress-track {
+          margin-top: 14px;
+          height: 22px;
+          border: 4px solid var(--edge);
+          background:
+            repeating-linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.08) 0 14px,
+              transparent 14px 28px
+            ),
+            rgba(10, 4, 20, 0.5);
+          box-shadow: 4px 4px 0 var(--shadow);
+        }
+
+        .progress-fill {
+          height: 100%;
+          background:
+            repeating-linear-gradient(
+              90deg,
+              #ffd84a 0 14px,
+              #ffb82e 14px 28px
+            );
+          transition: width 0.25s linear;
+        }
+
+        .timer-stats div {
+          background: rgba(10, 4, 20, 0.45);
+          border: 4px solid var(--edge);
+          box-shadow: var(--shadow-soft);
+          padding: 12px;
+          display: grid;
+          gap: 8px;
+        }
+
+        .timer-stats strong {
+          font-family: var(--font-pixel-body), monospace;
           font-size: 2rem;
-          font-weight: 700;
-          color: var(--foreground);
+          color: var(--accent-3);
         }
-        .focus-stat-value.danger { color: var(--accent); }
-        .focus-stat-label { font-size: 0.75rem; color: var(--muted); }
-        .mood-indicator {
-          margin-top: 24px;
-          padding: 20px;
-          background: #120b0c;
-          border: 1px solid var(--edge);
-          border-radius: 16px;
-          text-align: center;
+
+        .notes-area {
+          margin-top: 14px;
+          min-height: 280px;
+          resize: vertical;
         }
-        .mood-label {
-          font-size: 0.625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          color: rgba(255, 255, 255, 0.6);
-          margin: 0 0 8px 0;
+
+        .flavor-copy,
+        .flavor-single {
+          display: grid;
+          gap: 8px;
         }
-        .mood-display {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: white;
-          transition: all 0.3s ease;
+
+        .flavor-copy p,
+        .flavor-single {
+          margin: 0;
         }
-        .mood-display.happy { color: #facc15; }
-        .mood-display.suspicious { color: #f97316; }
-        .mood-display.angry { color: #f87171; animation: shake 0.3s ease-in-out infinite; }
-        .mood-display.demon { color: var(--accent); text-transform: uppercase; letter-spacing: 4px; }
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-3px); }
-          75% { transform: translateX(3px); }
+
+        @media (max-width: 980px) {
+          .hero,
+          .content-grid,
+          .marquee-row {
+            grid-template-columns: 1fr;
+          }
+
+          .button-row {
+            justify-content: flex-start;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .dashboard-page {
+            padding: 12px 8px 48px;
+          }
+
+          .stats-bar,
+          .timer-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .panel-header,
+          .timer-meta {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .pixel-panel {
+            padding: 14px;
+          }
+
+          .hero-text,
+          .rule-list,
+          .flavor-copy p,
+          .flavor-single,
+          .timer-meta,
+          .marquee {
+            font-size: 1.2rem;
+          }
         }
       `}</style>
     </div>

@@ -48,6 +48,9 @@ interface GameState {
   streak: number;
   lastActiveDate: string | null;
   sessionStart: number | null;
+  sessionStartedAt: number | null;
+  sessionGoalEndsAt: number | null;
+  sessionGoalMinutes: number;
   lastActivityTime: number;
   isDemonModeEnabled: boolean;
   isMonitoringEnabled: boolean;
@@ -63,6 +66,7 @@ interface GameState {
   togglePostureMonitoring: () => void;
   togglePostureDebug: () => void;
   toggleSound: () => void;
+  setSessionGoalMinutes: (minutes: number) => void;
   startSession: () => void;
   endSession: () => void;
   addTab: (name: string, color: string) => void;
@@ -118,6 +122,9 @@ export const useGameStore = create<GameState>()(
       streak: 0,
       lastActiveDate: null,
       sessionStart: null,
+      sessionStartedAt: null,
+      sessionGoalEndsAt: null,
+      sessionGoalMinutes: 50,
       lastActivityTime: Date.now(),
       isDemonModeEnabled: true,
       isMonitoringEnabled: true,
@@ -143,6 +150,11 @@ export const useGameStore = create<GameState>()(
 
       toggleSound: () =>
         set((state) => ({ isSoundEnabled: !state.isSoundEnabled })),
+
+      setSessionGoalMinutes: (minutes: number) =>
+        set(() => ({
+          sessionGoalMinutes: Math.min(480, Math.max(15, Math.round(minutes))),
+        })),
 
       loadUserData: async (userId: string) => {
         set({ isLoading: true, userId });
@@ -241,6 +253,8 @@ export const useGameStore = create<GameState>()(
         set({
           isSessionActive: true,
           sessionStart: Date.now(),
+          sessionStartedAt: Date.now(),
+          sessionGoalEndsAt: Date.now() + get().sessionGoalMinutes * 60000,
           lastActivityTime: Date.now(),
           mood: "happy",
           streak: newStreak,
@@ -257,6 +271,8 @@ export const useGameStore = create<GameState>()(
           set((s) => ({
             isSessionActive: false,
             sessionStart: null,
+            sessionStartedAt: null,
+            sessionGoalEndsAt: null,
             mood: "happy",
             totalXp: s.totalXp + xpEarned,
             level: calculateLevel(s.totalXp + xpEarned),
@@ -273,7 +289,13 @@ export const useGameStore = create<GameState>()(
 
           get().syncToCloud();
         } else {
-          set({ isSessionActive: false, sessionStart: null, mood: "happy" });
+          set({
+            isSessionActive: false,
+            sessionStart: null,
+            sessionStartedAt: null,
+            sessionGoalEndsAt: null,
+            mood: "happy",
+          });
         }
       },
 
@@ -429,6 +451,7 @@ export const useGameStore = create<GameState>()(
         isPostureMonitoringEnabled: state.isPostureMonitoringEnabled,
         isPostureDebugEnabled: state.isPostureDebugEnabled,
         isSoundEnabled: state.isSoundEnabled,
+        sessionGoalMinutes: state.sessionGoalMinutes,
         notesByTab: state.notesByTab,
         whitelist: state.whitelist,
       }),

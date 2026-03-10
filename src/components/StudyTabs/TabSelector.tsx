@@ -5,12 +5,12 @@ import { useGameStore } from "@/store/gameStore";
 import { TabCard } from "./TabCard";
 
 const PRESET_COLORS = [
-  "#ff6b4a",
-  "#4a9fff",
-  "#4aff6b",
-  "#ff4af0",
-  "#ffd24a",
-  "#4afff0",
+  "#ff6e9f",
+  "#46d8ff",
+  "#ffd84a",
+  "#86ff63",
+  "#c38bff",
+  "#ff8c42",
 ];
 
 export function TabSelector() {
@@ -32,25 +32,24 @@ export function TabSelector() {
   return (
     <div className="tab-selector">
       <div className="tab-header">
-        <h2 className="tab-title">Study Subjects</h2>
+        <div>
+          <p className="tab-kicker">Quest Slots</p>
+          <h2 className="tab-title">Study Save Files</h2>
+        </div>
         {!isSessionActive && (
-          <button
-            onClick={() => setIsAdding(!isAdding)}
-            className="add-tab-btn"
-          >
-            {isAdding ? "Cancel" : "+ Add Subject"}
+          <button onClick={() => setIsAdding(!isAdding)} className="add-tab-btn">
+            {isAdding ? "Close" : "New Slot"}
           </button>
         )}
       </div>
 
-      {/* Add Tab Form */}
       {isAdding && (
         <form onSubmit={handleAddTab} className="add-tab-form">
           <input
             type="text"
             value={newTabName}
             onChange={(e) => setNewTabName(e.target.value)}
-            placeholder="Subject name (e.g., Math, Coding)"
+            placeholder="Quest name"
             className="tab-name-input"
             autoFocus
             maxLength={20}
@@ -68,17 +67,16 @@ export function TabSelector() {
             ))}
           </div>
           <button type="submit" className="create-tab-btn" disabled={!newTabName.trim()}>
-            Create Subject
+            Save Slot
           </button>
         </form>
       )}
 
-      {/* Tab List */}
       <div className="tab-list">
         {tabs.length === 0 ? (
           <div className="empty-tabs">
-            <p>No study subjects yet.</p>
-            <p className="hint">Add a subject to start focusing!</p>
+            <p>No quest slots yet.</p>
+            <p className="hint">Create one before starting the run.</p>
           </div>
         ) : (
           tabs.map((tab) => (
@@ -95,132 +93,119 @@ export function TabSelector() {
 
       <style jsx>{`
         .tab-selector {
-          background: white;
-          border-radius: 24px;
-          padding: 24px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+          background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel) 100%);
+          border: 4px solid var(--edge);
+          box-shadow: var(--shadow-strong);
+          padding: 18px;
         }
 
         .tab-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .tab-kicker {
+          margin: 0 0 8px;
+          color: var(--accent);
+          font-size: 0.74rem;
+          line-height: 1.7;
         }
 
         .tab-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: var(--ink);
           margin: 0;
+          font-size: 1.06rem;
+          line-height: 1.45;
+          color: #fff6bf;
+        }
+
+        .add-tab-btn,
+        .create-tab-btn {
+          min-height: 46px;
+          padding: 10px 14px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          cursor: pointer;
         }
 
         .add-tab-btn {
-          padding: 8px 16px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--accent);
-          background: transparent;
-          border: 2px solid var(--accent);
-          border-radius: 20px;
-          cursor: pointer;
-          transition: all 0.2s ease;
+          background: var(--accent-3);
+          color: #091120;
         }
 
-        .add-tab-btn:hover {
-          background: var(--accent);
-          color: white;
+        .create-tab-btn {
+          background: var(--success);
+          color: #0e1f0c;
+        }
+
+        .create-tab-btn:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
         }
 
         .add-tab-form {
-          display: flex;
-          flex-direction: column;
+          display: grid;
           gap: 12px;
-          padding: 16px;
-          background: var(--background);
-          border-radius: 16px;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
+          padding: 14px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: rgba(10, 4, 20, 0.5);
         }
 
         .tab-name-input {
-          padding: 12px 16px;
-          font-size: 1rem;
-          border: 2px solid transparent;
-          border-radius: 12px;
-          background: white;
-          outline: none;
-          transition: all 0.2s ease;
-        }
-
-        .tab-name-input:focus {
-          border-color: var(--accent);
+          width: 100%;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: #f2f0ff;
+          color: #13091f;
+          padding: 12px 14px;
+          font-size: 1.55rem;
+          line-height: 1.1;
         }
 
         .color-picker {
           display: flex;
-          gap: 8px;
-          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
         }
 
         .color-option {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          border: 3px solid transparent;
+          width: 36px;
+          height: 36px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
           cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .color-option:hover {
-          transform: scale(1.1);
         }
 
         .color-option.selected {
-          border-color: var(--ink);
-          transform: scale(1.15);
-        }
-
-        .create-tab-btn {
-          padding: 12px 24px;
-          font-size: 1rem;
-          font-weight: 600;
-          color: white;
-          background: var(--accent);
-          border: none;
-          border-radius: 12px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .create-tab-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(255, 107, 74, 0.4);
-        }
-
-        .create-tab-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+          transform: translate(-2px, -2px);
+          box-shadow: 6px 6px 0 var(--shadow);
         }
 
         .tab-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          display: grid;
+          gap: 10px;
         }
 
         .empty-tabs {
+          border: 4px dashed rgba(255, 255, 255, 0.12);
+          padding: 18px;
           text-align: center;
-          padding: 32px 16px;
-          color: var(--muted);
+          color: var(--foreground);
         }
 
         .empty-tabs p {
           margin: 0;
+          font-size: 1.4rem;
+          line-height: 1.05;
         }
 
-        .empty-tabs .hint {
-          font-size: 0.875rem;
-          margin-top: 8px;
+        .hint {
+          margin-top: 8px !important;
+          color: var(--muted);
         }
       `}</style>
     </div>

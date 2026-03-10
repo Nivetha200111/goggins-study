@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FocusGuard Android</string>
+    <string name="app_subtitle">Foreground app warnings for unfinished study blocks.</string>
+</resources>

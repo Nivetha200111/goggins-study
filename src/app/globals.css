@@ -1,132 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8f4eb;
-  --foreground: #0f1221;
-  --card: #fff8ee;
-  --accent: #ff6b4a;
-  --accent-deep: #e1442e;
-  --ink: #1a1d2f;
-  --muted: #5d5f6b;
-  --glow: rgba(255, 107, 74, 0.32);
+  --background: #090412;
+  --background-alt: #160a24;
+  --panel: #2a1452;
+  --panel-strong: #3d2271;
+  --panel-soft: #1b0f35;
+  --foreground: #f6f2ff;
+  --muted: #c2b6ea;
+  --accent: #ffd84a;
+  --accent-2: #ff6e9f;
+  --accent-3: #46d8ff;
+  --success: #86ff63;
+  --danger: #ff7a7a;
+  --edge: #0c0619;
+  --shadow: #04010a;
+  --shadow-strong: 6px 6px 0 var(--shadow);
+  --shadow-soft: 4px 4px 0 var(--shadow);
+  --scanline: rgba(255, 255, 255, 0.05);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-syne);
-  --font-mono: var(--font-plex-mono);
+  --font-sans: var(--font-pixel-body);
+  --font-mono: var(--font-pixel-heading);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+}
+
 body {
-  background: radial-gradient(circle at top, #fff2da 0%, #f8f4eb 45%, #f1ede2 100%);
-  color: var(--foreground);
-  font-family: var(--font-syne), system-ui, sans-serif;
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  color: var(--foreground);
+  font-family: var(--font-pixel-body), monospace;
+  letter-spacing: 0.02em;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 216, 74, 0.12) 0 8%, transparent 8.5%),
+    radial-gradient(circle at 80% 18%, rgba(70, 216, 255, 0.12) 0 7%, transparent 7.5%),
+    linear-gradient(180deg, #2f1e63 0%, #1a1037 36%, #120927 64%, #080411 100%);
+  image-rendering: pixelated;
+  position: relative;
 }
 
-/* Global Animations */
-@keyframes floaty {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-18px);
-  }
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-  }
-  50% {
-    box-shadow: 0 0 40px var(--glow);
-  }
+body::before {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 2px,
+      var(--scanline) 2px 4px
+    );
+  mix-blend-mode: soft-light;
+  opacity: 0.35;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+body::after {
+  background:
+    radial-gradient(circle at center, transparent 0 55%, rgba(0, 0, 0, 0.3) 100%);
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
+a {
+  color: inherit;
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-3px); }
-  75% { transform: translateX(3px); }
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+button,
+label,
+.pixel-heading {
+  font-family: var(--font-pixel-heading), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-@keyframes glitch {
-  0%, 100% {
-    transform: translateX(0);
-    text-shadow: none;
-  }
-  20% {
-    transform: translateX(-2px);
-    text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
-  }
-  40% {
-    transform: translateX(2px);
-    text-shadow: -2px 0 #00ffff, 2px 0 #ff00ff;
-  }
-  60% {
-    transform: translateX(-1px);
-    text-shadow: 1px 0 #00ffff, -1px 0 #ff00ff;
-  }
-  80% {
-    transform: translateX(1px);
-    text-shadow: -1px 0 #00ffff, 1px 0 #ff00ff;
-  }
+p,
+li,
+span,
+input,
+textarea {
+  font-family: var(--font-pixel-body), monospace;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--muted);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--ink);
-}
-
-/* Selection styling */
-::selection {
-  background: var(--accent);
-  color: white;
-}
-
-/* Focus outline */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Button reset */
 button {
   font-family: inherit;
 }
 
-/* Input reset */
-input, textarea {
+input,
+textarea,
+select {
   font-family: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: #120927;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent-3);
+  outline-offset: 3px;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d0717;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #50318a;
+  border: 2px solid #0d0717;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6d45b8;
 }

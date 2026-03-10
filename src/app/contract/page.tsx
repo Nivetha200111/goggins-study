@@ -159,370 +159,289 @@ export default function ContractPage() {
 
   return (
     <div className="contract-page" onPointerDown={primeAudio}>
-      <div className="ember ember-1" />
-      <div className="ember ember-2" />
-      <div className="ember ember-3" />
+      <div className="boss-sky" />
+      <div className="boss-ground" />
+
       <div className="contract-wrapper">
-        <div className={`sigil ${status === "signed" ? "lit" : ""}`}>
-          <svg className="sigil-mark" viewBox="0 0 120 120" aria-hidden="true">
-            <circle cx="60" cy="60" r="46" />
-            <circle cx="60" cy="60" r="30" />
-            <path d="M60 18 L72 42 L98 44 L78 62 L84 88 L60 74 L36 88 L42 62 L22 44 L48 42 Z" />
-          </svg>
-          <div className="sigil-horn left" />
-          <div className="sigil-horn right" />
-          <div className="sigil-core" />
+        <div className="intro-panel pixel-panel">
+          <p className="kicker">Boss Warning</p>
+          <h1>Focus Contract</h1>
+          <p className="subtitle">
+            This is the old-school boss gate. Sign once, and the agent gets to call you
+            out whenever your run slips before the timer is done.
+          </p>
         </div>
-        <div className="scroll">
-          <div className="scroll-header">
-            <span className="scroll-kicker">Soul Contract</span>
-            <h1>Sell Your Distractions</h1>
-            <p className="scroll-subtitle">
-              Have you heard the phrase &quot;sell your soul to the devil&quot;? While
-              using this app, you do exactly that. You trade your distractions and
-              your time for discipline, success, and future glory.
-            </p>
-          </div>
 
-          <div className="scroll-body">
-            <p className="inscribed">
-              The mascot accepts your wandering focus as tribute. In return, it
-              sharpens your mind, guards your minutes, and promises the success
-              you crave.
+        <div className="contract-grid">
+          <section className="boss-card pixel-panel">
+            <div className={`core ${status === "signed" ? "lit" : ""}`}>
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <path d="M24 22h18v18H24zM78 22h18v18H78zM42 40h36v18H42zM30 58h18v18H30zM72 58h18v18H72zM42 76h36v18H42z" />
+              </svg>
+            </div>
+            <p className="boss-title">Sentinel Core</p>
+            <p className="boss-copy">
+              Tap anywhere to arm the sound. The core flashes when your signature lands.
             </p>
+          </section>
+
+          <section className="terms-card pixel-panel">
+            <p className="kicker">Quest Rules</p>
             <ul className="terms">
-              <li>I surrender idle minutes to the sentinel.</li>
-              <li>I allow the devil to shout when I drift.</li>
-              <li>I trade distraction for discipline, fame, and future proof success.</li>
-              <li>I honor the pact for every session I begin.</li>
+              <li>I trade idle browsing for deliberate study time.</li>
+              <li>I accept the pinned timer and local Chrome monitoring.</li>
+              <li>I accept voice callouts when I wander before the run ends.</li>
+              <li>I start each session only when I am ready to finish it.</li>
             </ul>
-          </div>
 
-          <div className="signature-block">
-            <div>
-              <span className="label">Signed by</span>
-              <div className="signature">{user?.username ?? "Your Name"}</div>
+            <div className="signature-grid">
+              <div className="signature-cell">
+                <span className="cell-label">Player</span>
+                <strong>{user?.username ?? "Loading"}</strong>
+              </div>
+              <div className="signature-cell">
+                <span className="cell-label">Date</span>
+                <strong>{new Date().toLocaleDateString()}</strong>
+              </div>
             </div>
-            <div>
-              <span className="label">Date</span>
-              <div className="signature">{new Date().toLocaleDateString()}</div>
-            </div>
-          </div>
 
-          <div className="seal-row">
-            <div className="seal" />
-            <div className="seal-text">
-              The sigil burns once your vow is made.
+            <div className="actions">
+              <button className="sign-btn" onClick={handleSign} disabled={status !== "idle"}>
+                {status === "idle"
+                  ? "Accept Quest"
+                  : status === "signing"
+                    ? "Saving..."
+                    : "Bound"}
+              </button>
+              <button className="decline-btn" onClick={handleDecline}>
+                Walk Away
+              </button>
             </div>
-          </div>
 
-          <div className="actions">
-            <button
-              className="sign-btn"
-              onClick={handleSign}
-              disabled={status !== "idle"}
-            >
-              {status === "idle"
-                ? "Sign the contract"
-                : status === "signing"
-                  ? "Binding..."
-                  : "Bound"}
-            </button>
-            <button className="decline-btn" onClick={handleDecline}>
-              Decline and walk away
-            </button>
-            {error && <p className="error">{error}</p>}
-          </div>
-          <p className="audio-note">Tap the scroll to awaken the pact.</p>
+            {error ? <p className="error">{error}</p> : null}
+            <p className="audio-note">Tap the screen first if your browser blocks sound.</p>
+          </section>
         </div>
       </div>
 
       <style jsx>{`
         .contract-page {
           min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 48px 16px;
-          background:
-            radial-gradient(circle at 20% 10%, rgba(255, 80, 80, 0.25), transparent 55%),
-            radial-gradient(circle at 80% 15%, rgba(255, 200, 120, 0.2), transparent 60%),
-            radial-gradient(circle at 50% 80%, rgba(90, 20, 20, 0.45), transparent 55%),
-            linear-gradient(180deg, #0c0b12 0%, #130c0b 100%);
-          color: #f9ead1;
           position: relative;
           overflow: hidden;
+          padding: 18px 12px 56px;
         }
-        .contract-wrapper {
-          width: min(860px, 100%);
-          position: relative;
-          z-index: 2;
-        }
-        .sigil {
-          width: 86px;
-          height: 86px;
-          margin: 0 auto 18px;
-          position: relative;
-          display: grid;
-          place-items: center;
-          z-index: 3;
-        }
-        .sigil-mark {
+
+        .boss-sky,
+        .boss-ground {
           position: absolute;
-          inset: 6px;
-          fill: none;
-          stroke: rgba(90, 30, 20, 0.85);
-          stroke-width: 2.4;
-          opacity: 0.9;
-        }
-        .sigil.lit::after {
-          content: "";
-          position: absolute;
-          inset: -8px;
-          border-radius: 24px;
-          background: radial-gradient(circle, rgba(255, 120, 80, 0.6), transparent 70%);
-          filter: blur(6px);
-          opacity: 0.9;
-          animation: sigil-burn 1.4s ease-in-out infinite;
+          inset: 0;
           pointer-events: none;
         }
-        .sigil-core {
-          width: 48px;
-          height: 48px;
-          border-radius: 16px;
-          background: radial-gradient(circle, #ff6b4a 0%, #7f1d1d 70%);
-          margin: 12px auto 0;
-          box-shadow: 0 0 40px rgba(255, 80, 70, 0.6);
-          position: relative;
-          z-index: 2;
-        }
-        .sigil.lit .sigil-core {
-          box-shadow:
-            0 0 30px rgba(255, 120, 80, 0.8),
-            0 0 70px rgba(255, 80, 70, 0.9);
-          animation: sigil-burn 1.4s ease-in-out infinite;
-        }
-        .sigil.lit .sigil-mark {
-          stroke: rgba(255, 120, 80, 0.95);
-          filter: drop-shadow(0 0 8px rgba(255, 100, 70, 0.8));
-          animation: sigil-burn 1.4s ease-in-out infinite;
-        }
-        .sigil-horn {
-          position: absolute;
-          top: 4px;
-          width: 18px;
-          height: 24px;
-          border-radius: 6px;
-          background: linear-gradient(180deg, #ffb24a, #b91c1c);
-          z-index: 2;
-        }
-        .sigil.lit .sigil-horn {
-          box-shadow: 0 0 14px rgba(255, 120, 80, 0.6);
-        }
-        .sigil-horn.left {
-          left: 4px;
-          transform: rotate(-18deg);
-        }
-        .sigil-horn.right {
-          right: 4px;
-          transform: rotate(18deg);
-        }
-        .scroll {
-          position: relative;
+
+        .boss-sky {
           background:
-            linear-gradient(135deg, #f9e7c6 0%, #e8cda0 40%, #f2d7aa 100%),
-            radial-gradient(circle at 10% 20%, rgba(120, 72, 36, 0.12), transparent 35%),
-            radial-gradient(circle at 80% 70%, rgba(120, 72, 36, 0.18), transparent 40%);
-          border: 1px solid #d1b58a;
-          border-radius: 18px;
-          padding: 42px 42px 34px;
-          color: #3a2415;
-          box-shadow:
-            0 40px 80px rgba(0, 0, 0, 0.45),
-            inset 0 0 40px rgba(255, 255, 255, 0.4);
-          overflow: hidden;
+            radial-gradient(circle at 18% 20%, rgba(255, 216, 74, 0.2) 0 8%, transparent 8.5%),
+            radial-gradient(circle at 80% 16%, rgba(255, 110, 159, 0.18) 0 10%, transparent 10.5%);
+          opacity: 0.8;
         }
-        .scroll::before,
-        .scroll::after {
-          content: "";
-          position: absolute;
-          left: -8px;
-          right: -8px;
-          height: 24px;
-          background: radial-gradient(circle at center, #b08259 0%, #6a3f22 70%);
-          opacity: 0.25;
+
+        .boss-ground {
+          inset: auto 0 0;
+          height: 180px;
+          background:
+            linear-gradient(
+              135deg,
+              transparent 0 10%,
+              #10071b 10% 22%,
+              transparent 22% 28%,
+              #10071b 28% 42%,
+              transparent 42% 50%,
+              #10071b 50% 66%,
+              transparent 66% 78%,
+              #10071b 78% 100%
+            );
         }
-        .scroll::before {
-          top: -12px;
-          border-radius: 50%;
-        }
-        .scroll::after {
-          bottom: -12px;
-          border-radius: 50%;
-        }
-        .scroll-header h1 {
-          font-size: clamp(2.2rem, 4vw, 3rem);
-          margin: 8px 0 12px;
-          color: #2c1a10;
-          text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6);
-        }
-        .scroll-kicker {
-          text-transform: uppercase;
-          letter-spacing: 0.4em;
-          font-size: 0.7rem;
-          color: #7a4d2a;
-          font-weight: 700;
-        }
-        .scroll-subtitle {
-          margin: 0 0 20px;
-          color: #5b3a23;
-          line-height: 1.6;
-        }
-        .scroll-body {
+
+        .contract-wrapper {
+          position: relative;
+          z-index: 1;
+          width: min(1080px, 100%);
+          margin: 0 auto;
           display: grid;
           gap: 16px;
-          font-size: 0.98rem;
+        }
+
+        .pixel-panel {
+          background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel) 100%);
+          border: 4px solid var(--edge);
+          box-shadow: var(--shadow-strong);
+          padding: 18px;
+        }
+
+        .contract-grid {
+          display: grid;
+          grid-template-columns: minmax(240px, 0.34fr) minmax(0, 0.66fr);
+          gap: 16px;
+        }
+
+        .kicker,
+        .cell-label {
+          margin: 0 0 10px;
+          color: var(--accent);
+          font-size: 0.74rem;
           line-height: 1.7;
         }
-        .inscribed {
-          font-family: var(--font-plex-mono), monospace;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          font-size: 0.8rem;
-          color: #2a1b13;
+
+        h1 {
+          margin: 0;
+          font-size: clamp(1.5rem, 4vw, 2.8rem);
+          line-height: 1.35;
+          color: #fff6bf;
+          text-shadow: 4px 4px 0 #26124b;
         }
+
+        .subtitle,
+        .boss-copy,
+        .audio-note,
+        .error {
+          margin: 12px 0 0;
+          font-size: 1.42rem;
+          line-height: 1.08;
+          color: var(--foreground);
+        }
+
+        .boss-card {
+          display: grid;
+          align-content: start;
+          gap: 14px;
+          min-height: 100%;
+        }
+
+        .core {
+          width: min(220px, 100%);
+          aspect-ratio: 1;
+          margin: 0 auto;
+          display: grid;
+          place-items: center;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background:
+            repeating-linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.08) 0 16px,
+              transparent 16px 32px
+            ),
+            #1a0d31;
+        }
+
+        .core svg {
+          width: 72%;
+          fill: var(--accent-3);
+          filter: drop-shadow(0 0 10px rgba(70, 216, 255, 0.35));
+        }
+
+        .core.lit {
+          background:
+            repeating-linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.08) 0 16px,
+              transparent 16px 32px
+            ),
+            #38103e;
+        }
+
+        .core.lit svg {
+          fill: var(--accent);
+          filter: drop-shadow(0 0 18px rgba(255, 216, 74, 0.55));
+        }
+
+        .boss-title {
+          margin: 0;
+          color: #fff6bf;
+          font-family: var(--font-pixel-heading), monospace;
+          font-size: 0.86rem;
+          line-height: 1.7;
+          text-transform: uppercase;
+        }
+
+        .terms-card {
+          display: grid;
+          gap: 14px;
+        }
+
         .terms {
           margin: 0;
           padding-left: 18px;
-          color: #3a2415;
-        }
-        .terms li {
-          margin-bottom: 8px;
-        }
-        .signature-block {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
-          margin-top: 24px;
-        }
-        .label {
-          text-transform: uppercase;
-          font-size: 0.65rem;
-          letter-spacing: 0.3em;
-          color: #7a4d2a;
-          font-weight: 700;
-        }
-        .signature {
-          margin-top: 8px;
-          padding: 10px 0;
-          border-bottom: 2px solid rgba(122, 77, 42, 0.6);
-          font-size: 1.1rem;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-        }
-        .seal-row {
-          margin-top: 26px;
-          display: grid;
-          grid-template-columns: 60px 1fr;
-          gap: 16px;
-          align-items: center;
-        }
-        .seal {
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, #ffb4a0, #991b1b 70%);
-          box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-        .seal-text {
-          font-size: 0.85rem;
-          color: #5b3a23;
-        }
-        .actions {
-          margin-top: 28px;
-          display: grid;
-          gap: 12px;
-        }
-        .sign-btn {
-          padding: 14px 18px;
-          border: none;
-          border-radius: 12px;
-          background: linear-gradient(120deg, #b91c1c, #ff6b4a);
-          color: #fff5e8;
-          font-size: 1rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.12em;
-          cursor: pointer;
-          box-shadow: 0 16px 32px rgba(185, 28, 28, 0.35);
-        }
-        .sign-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-        .decline-btn {
-          background: transparent;
-          border: 1px solid rgba(90, 60, 40, 0.6);
-          color: #5b3a23;
-          padding: 12px 18px;
-          border-radius: 12px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        .audio-note {
-          margin-top: 12px;
-          font-size: 0.75rem;
-          color: #7a4d2a;
-          text-align: center;
-        }
-        .error {
-          margin: 0;
-          color: #b91c1c;
-          font-weight: 600;
-        }
-        .ember {
-          position: absolute;
-          width: 220px;
-          height: 220px;
-          border-radius: 50%;
-          filter: blur(60px);
-          opacity: 0.35;
-          animation: floaty 10s ease-in-out infinite;
-        }
-        .ember-1 {
-          top: -60px;
-          left: -60px;
-          background: rgba(255, 90, 80, 0.6);
-        }
-        .ember-2 {
-          bottom: -80px;
-          right: -60px;
-          background: rgba(255, 200, 130, 0.5);
-          animation-delay: 2s;
-        }
-        .ember-3 {
-          top: 45%;
-          right: 20%;
-          background: rgba(140, 30, 30, 0.4);
-          animation-delay: 4s;
-        }
-        @keyframes sigil-burn {
-          0%, 100% {
-            opacity: 0.85;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.05);
-          }
+          gap: 10px;
+          font-size: 1.5rem;
+          line-height: 1.08;
         }
 
-        @media (max-width: 640px) {
-          .scroll {
-            padding: 32px 24px;
-          }
-          .signature {
-            letter-spacing: 0.12em;
+        .signature-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .signature-cell {
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: rgba(10, 4, 20, 0.45);
+          padding: 12px;
+          display: grid;
+          gap: 8px;
+        }
+
+        .signature-cell strong {
+          font-size: 1.6rem;
+          line-height: 1.05;
+          color: #fff7dd;
+        }
+
+        .actions {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .sign-btn,
+        .decline-btn {
+          min-height: 50px;
+          padding: 12px 16px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          cursor: pointer;
+        }
+
+        .sign-btn {
+          background: var(--success);
+          color: #0f200d;
+        }
+
+        .decline-btn {
+          background: var(--danger);
+          color: #220707;
+        }
+
+        .sign-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .error {
+          color: #ffd6d6;
+          background: rgba(255, 122, 122, 0.16);
+          padding: 10px 12px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+        }
+
+        @media (max-width: 780px) {
+          .contract-grid,
+          .signature-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

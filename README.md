@@ -1,84 +1,162 @@
-Study Sentry is a Vercel-deployable focus companion that watches this tab for topic drift and triggers a full-screen video interruption when you leave or go off-topic.
+# Local Focus Agent
 
-## Chrome Extension
+Local Focus Agent is a pixel-themed study dashboard plus a Chrome extension that keeps a pinned timer on screen, watches Chrome usage locally, and shouts when you drift off-topic before the session ends.
 
-The extension lives in `extension/` and keeps the companion visible across browser tabs.
+The repo also contains an Android scaffold that warns when Instagram, LinkedIn, or WhatsApp open before your study block is complete.
 
-Setup:
+## Stack
 
-1. Copy a scream clip to `extension/media/scream.mp4` (already copied from `public/scream.mp4`).
-2. Open Chrome > `chrome://extensions` > enable Developer Mode.
-3. Click "Load unpacked" and select the `extension/` folder.
+- Next.js 16 app in `src/`
+- Chrome extension in `extension/`
+- Native Android scaffold in `android-app/`
+- Supabase for auth, tabs, and whitelist persistence
 
-The companion will appear on every page the extension can inject into and react to off-topic tabs or typing drift.
+## What changed
 
-Picture-in-Picture:
+The active product flow now uses:
 
-- Click the companion "Pin" button (or the popup "Pin Companion") to keep it visible across tabs.
-- PiP requires a user click and may be blocked on some pages until you interact.
+- local rule-based relevance checks
+- Chrome page text + typed text monitoring
+- pinned timer overlay
+- pixel-art website theme
 
-Voice + Yell mode:
+The active flow does not use:
 
-- Toggle voice prompts and yell mode in the extension settings.
-- Yell mode uses more aggressive voice lines and louder speech.
+- webcam monitoring
+- posture detection
+- TensorFlow or cloud AI inference
 
-## Container Modes
+Legacy webcam/AI code is still present in the repo, but it is not mounted in the active path.
 
-Web app (Next.js):
+## Prerequisites
+
+### Web app
+
+- Node.js 20+
+- npm
+
+### Chrome extension
+
+- Google Chrome or Chromium with Developer Mode enabled
+
+### Android app
+
+- Android Studio
+- Java 17
+- Android SDK
+
+The current environment where these changes were made did not have Java, Gradle, or the Android SDK, so the Android app source is included but no APK was built here.
+
+## Environment setup
+
+Create `.env.local` in the repo root:
 
 ```bash
-docker compose --profile web up --build
-```
-
-Chrome extension (zip bundle output):
-
-```bash
-docker build -f docker/Dockerfile.extension -o dist-extension .
-```
-
-Electron build output:
-
-```bash
-docker build -f docker/Dockerfile.electron -o dist-electron-build .
-```
-
-## Getting Started
-
-Add a scream clip:
-
-- Place a short video at `public/scream.mp4`.
-
-Supabase auth:
-
-1. Create a Supabase project.
-2. Set the following environment variables (local `.env.local`):
-
-```
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Then run the development server:
+If you do not have Supabase configured yet, the login and cloud-backed tab syncing will not work.
+
+## Install and run the dashboard
 
 ```bash
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-## How It Works
+- `http://localhost:3000`
 
-- Topic drift is detected in the Focus Notes panel.
-- Leaving the tab triggers the same alert.
-- A lightweight local profile tracks sessions, focus minutes, and distractions.
+Then:
 
-## Deploy
+1. Sign in with your username and invite code.
+2. Create a study subject.
+3. Set a timer.
+4. Start the session.
 
-Deploy on Vercel as a standard Next.js app.
+## Load the Chrome extension
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Open `chrome://extensions`
+2. Enable `Developer mode`
+3. Click `Load unpacked`
+4. Select the `extension/` directory
 
-## Next
+Once loaded, the extension can be controlled in two ways:
 
-Add a learning layer that adapts thresholds based on your study patterns.
-# goggins-study
+- from the popup
+- from the dashboard running on `localhost`
+
+When the dashboard is open, it syncs:
+
+- active subject
+- timer duration
+- sound setting
+- whitelist domains
+- topic keywords
+
+## How the Chrome agent works
+
+The extension evaluates:
+
+- active tab URL
+- tab title
+- visible page text
+- text typed into editable fields
+
+It raises pressure when:
+
+- the page is on a blocked distractor domain
+- typed text does not overlap enough with the current study keywords
+- the text looks like chat/social/distraction language
+- the page is neither allowlisted nor relevant
+
+When the timer finishes, the extension stops punitive alerts for that session.
+
+## Android app setup
+
+The Android source is under `android-app/`.
+
+Recommended path:
+
+1. Open `android-app/` in Android Studio
+2. Let Gradle sync
+3. Build or generate an APK from Android Studio
+4. Install the APK on your phone
+5. Grant:
+   - Usage Access
+   - Notifications
+
+The app currently watches:
+
+- Instagram
+- LinkedIn
+- WhatsApp
+
+It uses a foreground service plus Usage Access to detect the current foreground app and trigger notifications and voice prompts before the study timer is complete.
+
+## Verification
+
+The active desktop path was verified with:
+
+```bash
+npm run lint
+npm run build
+```
+
+## Repository layout
+
+```text
+src/                 Next.js dashboard
+extension/           Chrome extension
+android-app/         Native Android scaffold
+PRD.md               Product description for the pivot
+CONTRIBUTIONS.md     Contribution and workflow guidance
+```
+
+## Known limitations
+
+- The Chrome extension only sees what browser extensions are allowed to observe in tabs and editable fields.
+- The Android app is a warning system, not a hard app blocker.
+- APK generation must happen on a machine with Android tooling installed.

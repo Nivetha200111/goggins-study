@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FocusGuard" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/focus_accent</item>
+        <item name="colorSecondary">@color/focus_accent</item>
+        <item name="android:statusBarColor">@color/focus_bg</item>
+        <item name="android:navigationBarColor">@color/focus_bg</item>
+        <item name="android:windowBackground">@color/focus_bg</item>
+    </style>
+</resources>

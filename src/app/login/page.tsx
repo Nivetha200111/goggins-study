@@ -118,42 +118,48 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <p className="kicker">Focus Companion</p>
-        <h1>Join the grind</h1>
-        <p className="subtitle">Use your invite code as your password to log in.</p>
+      <div className="cabinet-shell">
+        <div className="cabinet-top">Insert Focus</div>
+        <div className="auth-card">
+          <p className="kicker">Player Login</p>
+          <h1>Press Start</h1>
+          <p className="subtitle">
+            Your invite code is the cartridge key. Same username, same code, every run.
+          </p>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            Username
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your name"
-              required
-              minLength={2}
-              maxLength={20}
-              autoFocus
-            />
-          </label>
-          <label>
-            Invite Code
-            <input
-              type="text"
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              placeholder="Invite code (required every time)"
-              required
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <label>
+              Username
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Player tag"
+                required
+                minLength={2}
+                maxLength={20}
+                autoFocus
+              />
+            </label>
 
-          {error && <p className="error">{error}</p>}
+            <label>
+              Invite Code
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Cart key"
+                required
+              />
+            </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Joining..." : "Start Focusing"}
-          </button>
-        </form>
+            {error ? <p className="error">{error}</p> : null}
+
+            <button type="submit" disabled={loading}>
+              {loading ? "Loading..." : "Start Game"}
+            </button>
+          </form>
+        </div>
       </div>
 
       <style jsx>{`
@@ -161,74 +167,103 @@ export default function LoginPage() {
           min-height: 100vh;
           display: grid;
           place-items: center;
-          padding: 24px;
-          background: var(--background);
+          padding: 18px 12px;
         }
+
+        .cabinet-shell {
+          width: min(560px, 100%);
+          border: 4px solid var(--edge);
+          box-shadow: 8px 8px 0 var(--shadow);
+          background: linear-gradient(180deg, #3e1f73 0%, #231045 100%);
+          padding: 14px;
+        }
+
+        .cabinet-top {
+          padding: 12px 14px;
+          margin-bottom: 14px;
+          border: 4px solid var(--edge);
+          background: var(--accent);
+          color: #180f00;
+          text-align: center;
+          box-shadow: 4px 4px 0 var(--shadow);
+        }
+
         .auth-card {
-          width: min(400px, 92vw);
-          background: white;
-          border-radius: 24px;
-          padding: 32px;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+          border: 4px solid var(--edge);
+          background:
+            linear-gradient(180deg, rgba(10, 4, 20, 0.55) 0%, rgba(29, 15, 58, 0.82) 100%);
+          box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.05);
+          padding: 20px;
         }
+
         .kicker {
-          margin: 0;
-          text-transform: uppercase;
-          letter-spacing: 0.3em;
-          font-size: 0.7rem;
-          color: var(--muted);
+          margin: 0 0 10px;
+          color: var(--accent);
+          font-size: 0.74rem;
+          line-height: 1.7;
         }
+
         h1 {
-          margin: 8px 0;
-          font-size: 2rem;
-          color: var(--ink);
+          margin: 0;
+          font-size: clamp(1.5rem, 5vw, 2.6rem);
+          line-height: 1.35;
+          color: #fff6bf;
+          text-shadow: 4px 4px 0 #231045;
         }
-        .subtitle {
-          margin: 0 0 24px;
-          color: var(--muted);
+
+        .subtitle,
+        .error {
+          margin: 12px 0 0;
+          font-size: 1.45rem;
+          line-height: 1.1;
+          color: var(--foreground);
         }
+
         .auth-form {
           display: grid;
-          gap: 16px;
+          gap: 14px;
+          margin-top: 18px;
         }
+
         label {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--ink);
           display: grid;
           gap: 8px;
+          color: var(--accent-2);
+          font-size: 0.76rem;
+          line-height: 1.7;
         }
+
         input {
-          padding: 14px 16px;
-          border-radius: 12px;
-          border: 2px solid transparent;
-          background: #f8f4eb;
-          font-size: 1rem;
-          outline: none;
+          width: 100%;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: #f2f0ff;
+          color: #13091f;
+          padding: 12px 14px;
+          font-size: 1.6rem;
+          line-height: 1.1;
         }
-        input:focus {
-          border-color: var(--accent);
-        }
-        button[type="submit"] {
-          margin-top: 8px;
-          padding: 14px 16px;
-          border: none;
-          border-radius: 12px;
-          background: var(--accent);
-          color: white;
-          font-size: 1rem;
-          font-weight: 700;
+
+        button {
+          min-height: 54px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
+          background: var(--success);
+          color: #10220e;
           cursor: pointer;
         }
+
         button:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
+
         .error {
-          color: #dc2626;
-          margin: 0;
-          font-size: 0.9rem;
-          font-weight: 500;
+          color: #ffd6d6;
+          background: rgba(255, 122, 122, 0.18);
+          padding: 10px 12px;
+          border: 4px solid var(--edge);
+          box-shadow: 4px 4px 0 var(--shadow);
         }
       `}</style>
     </div>

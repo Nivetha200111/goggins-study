@@ -3,46 +3,83 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Focus Companion</title>
+    <title>Local Focus Agent</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <main class="card">
-      <header class="header">
+    <main class="panel">
+      <header class="panel-header">
         <div>
-          <p class="kicker">Focus Companion</p>
-          <h1>Control Panel</h1>
+          <p class="eyebrow">Chrome agent</p>
+          <h1>Local focus control</h1>
         </div>
-        <div class="pill" id="session-pill">Inactive</div>
+        <div class="pill" id="session-pill">Idle</div>
       </header>
 
       <section class="section">
+        <label class="field">
+          <span>Study topic</span>
+          <input id="topic-input" type="text" placeholder="Operating systems" />
+        </label>
+
+        <div class="row compact">
+          <label class="field small">
+            <span>Minutes</span>
+            <input id="duration-input" type="number" min="15" max="480" step="5" value="50" />
+          </label>
+          <label class="check-row">
+            <input id="pin-toggle" type="checkbox" checked />
+            <span>Show pinned timer</span>
+          </label>
+        </div>
+
         <button id="session-btn" class="primary-btn">Start Session</button>
-        <p class="hint">Starts monitoring the active tab for focus.</p>
+        <p class="hint" id="summary-hint">
+          The overlay will pin itself across Chrome tabs and score typing locally.
+        </p>
       </section>
 
       <section class="section">
-        <div class="row">
+        <div class="row between">
           <div>
-            <p class="label">Whitelist current site</p>
-            <p class="hint" id="domain-hint">Adds this domain to allowed list.</p>
+            <p class="label">Allow current site</p>
+            <p class="hint" id="domain-hint">Use this for docs and course portals.</p>
           </div>
-          <button id="whitelist-btn" class="ghost-btn">Whitelist site</button>
+          <button id="whitelist-btn" class="ghost-btn">Allow site</button>
         </div>
       </section>
 
       <section class="section">
-        <p class="label">Whitelist keywords</p>
+        <p class="label">Topic keywords</p>
         <div class="row">
-          <input id="keyword-input" type="text" placeholder="e.g. tutorial, docs" />
-          <button id="add-keyword-btn" class="ghost-btn">Add keyword</button>
+          <input id="keyword-input" type="text" placeholder="scheduler, kernel, threads" />
+          <button id="add-keyword-btn" class="ghost-btn">Add</button>
         </div>
-        <p class="hint" id="keyword-hint">Pages whose title contains these words are allowed.</p>
+        <p class="hint" id="keyword-hint">
+          These strengthen the local relevance score.
+        </p>
       </section>
 
       <section class="section">
-        <p class="label">Whitelist snapshot</p>
-        <p class="hint" id="whitelist-preview">Loading...</p>
+        <p class="label">Live state</p>
+        <div class="state-grid">
+          <div>
+            <span>Time left</span>
+            <strong id="time-left">--:--</strong>
+          </div>
+          <div>
+            <span>Mood</span>
+            <strong id="mood-label">Happy</strong>
+          </div>
+          <div class="wide">
+            <span>Last reason</span>
+            <strong id="reason-label">Waiting for a session.</strong>
+          </div>
+          <div class="wide">
+            <span>Allowlist</span>
+            <strong id="whitelist-preview">Domains: 0 | Keywords: 0</strong>
+          </div>
+        </div>
       </section>
 
       <p class="status" id="status"></p>

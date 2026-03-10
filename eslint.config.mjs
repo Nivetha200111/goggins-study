@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "dist-electron/**",
     "next-env.d.ts",
+    // Legacy webcam / quiz flow kept in-repo but no longer mounted after the local-agent pivot.
+    "src/components/Companion/**",
+    "src/components/PostureMonitor/**",
+    "src/components/Quiz/**",
+    "src/hooks/useContentAnalyzer.ts",
+    "src/hooks/useDemonMode.ts",
+    "src/hooks/usePostureMonitor.ts",
+    "src/store/studyIntelligenceStore.ts",
   ]),
 ]);
 

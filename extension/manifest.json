@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Focus Companion",
+  "name": "Local Focus Agent",
   "version": "1.0.0",
-  "description": "Your angry study buddy that monitors your browsing",
+  "description": "A local Chrome study agent with rule-based NLP checks and a pinned timer",
   "permissions": [
     "tabs",
     "storage",

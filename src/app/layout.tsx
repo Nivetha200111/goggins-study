@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Syne } from "next/font/google";
+import { Press_Start_2P, VT323 } from "next/font/google";
+import { ChromeAgentSync } from "@/components/ChromeAgentSync";
 import "./globals.css";
 
-const syne = Syne({
-  variable: "--font-syne",
+const pressStart = Press_Start_2P({
+  variable: "--font-pixel-heading",
+  weight: "400",
   subsets: ["latin"],
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  weight: ["400", "500", "600"],
+const vt323 = VT323({
+  variable: "--font-pixel-body",
+  weight: "400",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Study Sentry",
+  title: "Local Focus Agent",
   description:
-    "A focus-first study companion that reacts when you drift off topic.",
+    "A local Chrome study agent with rule-based NLP checks, a pinned timer, and Android distraction alerts.",
 };
 
 export default function RootLayout({
@@ -26,9 +28,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${syne.variable} ${plexMono.variable} antialiased`}
-      >
+      <body className={`${pressStart.variable} ${vt323.variable}`}>
+        <ChromeAgentSync />
         {children}
       </body>
     </html>
